@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import MemberTabs from "@/components/ui/MemberTabs";
 import DatePicker from "@/components/ui/DatePicker";
 import StatusBadge from "@/components/ui/StatusBadge";
+import TaskAttachments from "@/components/ui/TaskAttachments";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import Link from "next/link";
 
@@ -212,6 +213,8 @@ export default function DailyPage() {
                   </button>
                 </div>
               )}
+
+              <TaskAttachments taskId={task.id} />
             </div>
           ))}
 
