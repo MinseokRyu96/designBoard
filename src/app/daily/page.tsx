@@ -45,14 +45,16 @@ function DailyContent() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    title: string; project_name: string; purpose: string;
+    status: TaskStatus; due_date: string;
+  } | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
   const [newTask, setNewTask] = useState({
-    title: "",
-    project_name: "",
-    purpose: "",
-    status: "진행중" as TaskStatus,
-    start_date: "",
-    due_date: "",
+    title: "", project_name: "", purpose: "",
+    status: "진행중" as TaskStatus, due_date: "",
   });
 
   const fetchData = useCallback(async () => {
@@ -65,11 +67,9 @@ function DailyContent() {
       const logs: { task: { id: string } | null; progress: string; issue: string; next_action: string; insight: string }[] = await logsRes.json();
       const allTasks: (Omit<TaskWithLog, "log" | "logDirty">)[] = await tasksRes.json();
 
-      const logMap = new Map(
-        logs.filter(l => l.task).map(l => [l.task!.id, l])
-      );
+      const logMap = new Map(logs.filter(l => l.task).map(l => [l.task!.id, l]));
 
-      const merged: TaskWithLog[] = allTasks.map((t) => {
+      setTasks(allTasks.map((t) => {
         const log = logMap.get(t.id);
         return {
           ...t,
@@ -81,22 +81,16 @@ function DailyContent() {
           },
           logDirty: false,
         };
-      });
-
-      setTasks(merged);
+      }));
     } finally {
       setLoading(false);
     }
   }, [selectedMember, date]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   function updateLog(taskId: string, field: string, value: string) {
-    setTasks(prev =>
-      prev.map(t => t.id === taskId ? { ...t, log: { ...t.log, [field]: value }, logDirty: true } : t)
-    );
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, log: { ...t.log, [field]: value }, logDirty: true } : t));
   }
 
   async function saveLog(task: TaskWithLog) {
@@ -105,12 +99,7 @@ function DailyContent() {
       await fetch("/api/daily-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          task_id: task.id,
-          member_id: MEMBER_IDS[selectedMember],
-          log_date: date,
-          ...task.log,
-        }),
+        body: JSON.stringify({ task_id: task.id, member_id: MEMBER_IDS[selectedMember], log_date: date, ...task.log }),
       });
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, logDirty: false } : t));
     } finally {
@@ -124,6 +113,34 @@ function DailyContent() {
     await fetch(`/api/tasks?id=${taskId}`, { method: "DELETE" });
     setDeleting(null);
     fetchData();
+  }
+
+  function startEdit(task: TaskWithLog) {
+    setEditingId(task.id);
+    setEditForm({
+      title: task.title,
+      project_name: task.project?.name ?? "",
+      purpose: task.purpose ?? "",
+      status: task.status,
+      due_date: task.due_date ?? "",
+    });
+  }
+
+  async function saveEdit(taskId: string) {
+    if (!editForm) return;
+    setEditSaving(true);
+    try {
+      await fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: taskId, title: editForm.title, purpose: editForm.purpose || null, status: editForm.status, due_date: editForm.due_date || null }),
+      });
+      setEditingId(null);
+      setEditForm(null);
+      fetchData();
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function createTask() {
@@ -142,29 +159,22 @@ function DailyContent() {
       }),
     });
     setShowNewTask(false);
-    setNewTask({ title: "", project_name: "", purpose: "", status: "진행중", start_date: "", due_date: "" });
+    setNewTask({ title: "", project_name: "", purpose: "", status: "진행중", due_date: "" });
     fetchData();
   }
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-8">
-      {/* 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Daily Log</h1>
         <div className="flex items-center gap-3">
           <input
-            type="date"
-            value={date}
-            onChange={(e) => {
-              setDate(e.target.value);
-              router.replace(`/daily?date=${e.target.value}`);
-            }}
+            type="date" value={date}
+            onChange={(e) => { setDate(e.target.value); router.replace(`/daily?date=${e.target.value}`); }}
             className="border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <Link
-            href={`/report/print?type=daily&date=${date}`}
-            className="px-4 py-2 bg-gray-900 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors"
-          >
+          <Link href={`/report/print?type=daily&date=${date}`}
+            className="px-4 py-2 bg-gray-900 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors">
             출력
           </Link>
         </div>
@@ -180,31 +190,72 @@ function DailyContent() {
         <div className="space-y-4">
           {tasks.map((task) => (
             <div key={task.id} className="bg-white border border-gray-200 rounded-xl p-5">
-              {/* 업무 헤더 */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 min-w-0">
-                  {task.project && (
-                    <p className="text-xs text-gray-400 mb-0.5">{task.project.name}</p>
-                  )}
-                  <h3 className="font-semibold text-gray-900">{task.title}</h3>
-                  {task.purpose && (
-                    <p className="text-sm text-gray-500 mt-0.5">{task.purpose}</p>
-                  )}
+
+              {/* 수정 모드 */}
+              {editingId === task.id && editForm ? (
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">업무명 *</label>
+                    <input value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                      className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">목적</label>
+                      <input value={editForm.purpose}
+                        onChange={(e) => setEditForm({ ...editForm, purpose: e.target.value })}
+                        className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="업무 목적" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-400 mb-1">상태</label>
+                      <select value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value as TaskStatus })}
+                        className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>진행중</option>
+                        <option>완료</option>
+                        <option>보류</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-400 mb-1">완료 예정일</label>
+                    <input type="date" value={editForm.due_date}
+                      onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                      className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                  <div className="flex gap-2 justify-end pt-1">
+                    <button onClick={() => { setEditingId(null); setEditForm(null); }}
+                      className="px-3 py-1.5 border border-gray-200 rounded text-sm text-gray-500 hover:bg-gray-50">취소</button>
+                    <button onClick={() => saveEdit(task.id)} disabled={editSaving}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                      {editSaving ? "저장 중..." : "저장"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-3 shrink-0">
-                  <StatusBadge status={task.status} />
-                  {task.due_date && (
-                    <span className="text-xs text-gray-400">~{task.due_date}</span>
-                  )}
-                  <button
-                    onClick={() => deleteTask(task.id)}
-                    disabled={deleting === task.id}
-                    className="text-xs text-gray-300 hover:text-red-400 transition-colors ml-1"
-                  >
-                    {deleting === task.id ? "..." : "삭제"}
-                  </button>
+              ) : (
+                /* 일반 뷰 */
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1 min-w-0">
+                    {task.project && <p className="text-xs text-gray-400 mb-0.5">{task.project.name}</p>}
+                    <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                    {task.purpose && <p className="text-sm text-gray-500 mt-0.5">{task.purpose}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 ml-3 shrink-0">
+                    <StatusBadge status={task.status} />
+                    {task.due_date && <span className="text-xs text-gray-400">~{task.due_date}</span>}
+                    <button onClick={() => startEdit(task)}
+                      className="text-xs text-gray-400 hover:text-blue-500 transition-colors border border-gray-200 rounded px-2 py-0.5">
+                      수정
+                    </button>
+                    <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
+                      className="text-xs text-gray-300 hover:text-red-400 transition-colors">
+                      {deleting === task.id ? "..." : "삭제"}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* 로그 필드 */}
               <div className="space-y-3">
@@ -216,24 +267,18 @@ function DailyContent() {
                 ] as const).map(({ field, label }) => (
                   <div key={field}>
                     <label className="block text-xs font-medium text-gray-400 mb-1">{label}</label>
-                    <textarea
-                      rows={2}
-                      value={task.log[field]}
+                    <textarea rows={2} value={task.log[field]}
                       onChange={(e) => updateLog(task.id, field, e.target.value)}
                       placeholder={`${label} 입력...`}
-                      className="w-full border border-gray-100 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                    />
+                      className="w-full border border-gray-100 rounded px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
                   </div>
                 ))}
               </div>
 
               {task.logDirty && (
                 <div className="mt-3 flex justify-end">
-                  <button
-                    onClick={() => saveLog(task)}
-                    disabled={saving === task.id}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
+                  <button onClick={() => saveLog(task)} disabled={saving === task.id}
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                     {saving === task.id ? "저장 중..." : "저장"}
                   </button>
                 </div>
@@ -244,91 +289,69 @@ function DailyContent() {
           ))}
 
           {tasks.length === 0 && !showNewTask && (
-            <div className="text-center py-12 text-gray-400">
-              {date}에 기록된 업무가 없습니다.
-            </div>
+            <div className="text-center py-12 text-gray-400">{date}에 기록된 업무가 없습니다.</div>
           )}
         </div>
       )}
 
-      {/* 새 업무 추가 폼 */}
       {showNewTask ? (
         <div className="mt-4 bg-white border border-blue-200 rounded-xl p-5">
           <h3 className="font-semibold text-gray-900 mb-4">업무 추가</h3>
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">업무명 *</label>
-              <input
-                value={newTask.title}
+              <input value={newTask.title}
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 onKeyDown={(e) => e.key === "Enter" && createTask()}
                 autoFocus
                 className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="오늘 진행한 업무명"
-              />
+                placeholder="오늘 진행한 업무명" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">프로젝트 (선택)</label>
-                <input
-                  value={newTask.project_name}
+                <input value={newTask.project_name}
                   onChange={(e) => setNewTask({ ...newTask, project_name: e.target.value })}
                   className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="프로젝트명"
-                />
+                  placeholder="프로젝트명" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">상태</label>
-                <select
-                  value={newTask.status}
+                <select value={newTask.status}
                   onChange={(e) => setNewTask({ ...newTask, status: e.target.value as TaskStatus })}
-                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option>진행중</option>
                   <option>완료</option>
                   <option>보류</option>
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">목적 (선택)</label>
-              <input
-                value={newTask.purpose}
-                onChange={(e) => setNewTask({ ...newTask, purpose: e.target.value })}
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="업무 목적"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">완료 예정일 (선택)</label>
-              <input
-                type="date"
-                value={newTask.due_date}
-                onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-                className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">목적 (선택)</label>
+                <input value={newTask.purpose}
+                  onChange={(e) => setNewTask({ ...newTask, purpose: e.target.value })}
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="업무 목적" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">완료 예정일 (선택)</label>
+                <input type="date" value={newTask.due_date}
+                  onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
             </div>
           </div>
           <div className="flex gap-2 mt-4 justify-end">
-            <button
-              onClick={() => setShowNewTask(false)}
-              className="px-4 py-2 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50"
-            >
-              취소
-            </button>
-            <button
-              onClick={createTask}
-              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700"
-            >
-              추가
-            </button>
+            <button onClick={() => setShowNewTask(false)}
+              className="px-4 py-2 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50">취소</button>
+            <button onClick={createTask}
+              className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">추가</button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setShowNewTask(true)}
-          className="mt-4 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors"
-        >
+        <button onClick={() => setShowNewTask(true)}
+          className="mt-4 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
           + 업무 추가
         </button>
       )}
