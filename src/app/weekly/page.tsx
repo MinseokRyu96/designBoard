@@ -70,6 +70,7 @@ export default function WeeklyPage() {
   const [showForm, setShowForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", start_date: "", due_date: "" });
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [selectedLog, setSelectedLog] = useState<DailyLogEntry | null>(null);
 
   const weekSunday = toDateStr(new Date(new Date(weekMonday + "T00:00:00").setDate(new Date(weekMonday + "T00:00:00").getDate() + 6)));
   const nextMonday = toDateStr(new Date(new Date(weekMonday + "T00:00:00").setDate(new Date(weekMonday + "T00:00:00").getDate() + 7)));
@@ -236,13 +237,12 @@ export default function WeeklyPage() {
                           {log.task?.project && (
                             <span className="text-xs text-[#A0AAB4]">{log.task.project.name}</span>
                           )}
-                          {/* #7: 제목 클릭 → 해당 날짜 Daily Log 이동 */}
-                          <Link
-                            href={`/daily?date=${log.log_date}`}
-                            className="font-semibold text-sm text-[#191F28] hover:text-[#3366FF] hover:underline transition-colors"
+                          <button
+                            onClick={() => setSelectedLog(log)}
+                            className="font-semibold text-sm text-[#191F28] hover:text-[#3366FF] transition-colors text-left"
                           >
                             {log.task?.title ?? "-"}
-                          </Link>
+                          </button>
                           {log.task && <StatusBadge status={log.task.status} />}
                         </div>
                         <div className="space-y-1">
@@ -364,6 +364,85 @@ export default function WeeklyPage() {
               <Icon name="plus" size={16} className="inline mr-1" /> 차주 업무 추가
             </button>
           )}
+        </div>
+      )}
+
+      {/* ── 일일 로그 모달 ── */}
+      {selectedLog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedLog(null)}
+        >
+          {/* 오버레이 */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+
+          {/* 모달 패널 */}
+          <div
+            className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="sticky top-0 bg-white px-6 pt-5 pb-4 border-b border-[#EEF1F6] z-10">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  {selectedLog.task?.project && (
+                    <p className="text-xs font-medium text-[#A0AAB4] mb-1">{selectedLog.task.project.name}</p>
+                  )}
+                  <h3 className="font-bold text-[#191F28] text-base leading-snug">{selectedLog.task?.title ?? "-"}</h3>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    {selectedLog.task && <StatusBadge status={selectedLog.task.status} />}
+                    <span className="text-xs text-[#A0AAB4]">{selectedLog.log_date}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F4F6FA] transition-colors mt-0.5"
+                >
+                  <Icon name="cancel" size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* 로그 내용 */}
+            <div className="px-6 py-4 space-y-4">
+              {[
+                { label: "진행 내용", value: selectedLog.progress },
+                { label: "이슈 · 블로커", value: selectedLog.issue },
+                { label: "다음 액션", value: selectedLog.next_action },
+                { label: "인사이트", value: selectedLog.insight },
+              ].map(({ label, value }) =>
+                value ? (
+                  <div key={label}>
+                    <p className="text-xs font-semibold text-[#A0AAB4] uppercase tracking-wide mb-1.5">{label}</p>
+                    <p className="text-sm text-[#191F28] leading-relaxed whitespace-pre-wrap">{value}</p>
+                  </div>
+                ) : null
+              )}
+
+              {!selectedLog.progress && !selectedLog.issue && !selectedLog.next_action && !selectedLog.insight && (
+                <p className="text-sm text-[#C0C8D4] text-center py-4">기록된 내용이 없습니다.</p>
+              )}
+
+              {/* 첨부파일 */}
+              {selectedLog.task && (
+                <div className="pt-2 border-t border-[#EEF1F6]">
+                  <TaskAttachments taskId={selectedLog.task.id} readOnly />
+                </div>
+              )}
+            </div>
+
+            {/* 푸터 — Daily 편집 링크 */}
+            <div className="px-6 pb-5 pt-2 border-t border-[#EEF1F6]">
+              <Link
+                href={`/daily?date=${selectedLog.log_date}`}
+                onClick={() => setSelectedLog(null)}
+                className="flex items-center justify-center gap-1.5 w-full py-2.5 border border-[#E2E8F0] rounded-xl text-sm text-[#6B7685] hover:border-[#3366FF] hover:text-[#3366FF] transition-colors"
+              >
+                <Icon name="pencil" size={14} />
+                Daily Log에서 편집
+              </Link>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
+import Tooltip from "@/components/ui/Tooltip";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import Link from "next/link";
 
@@ -489,31 +490,38 @@ function DailyContent() {
                         <h3 className="font-semibold text-[#191F28] text-[15px] leading-snug">{task.title}</h3>
                         {task.purpose && <p className="text-sm text-[#6B7685] mt-1">{task.purpose}</p>}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                      <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
                         {/* #4: 클릭으로 상태 순환 */}
-                        <StatusBadge status={task.status} onClick={() => updateStatus(task.id, task.status)} />
+                        <Tooltip text="클릭하여 상태 변경">
+                          <StatusBadge status={task.status} onClick={() => updateStatus(task.id, task.status)} />
+                        </Tooltip>
                         {task.due_date && <span className="text-xs text-[#A0AAB4]">~{task.due_date}</span>}
-                        <button onClick={() => startEdit(task)}
-                          title="수정"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-70 hover:opacity-100 transition-all">
-                          <Icon name="pencil" size={14} />
-                        </button>
+                        <Tooltip text="수정">
+                          <button onClick={() => startEdit(task)}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all">
+                            <Icon name="pencil" size={14} />
+                          </button>
+                        </Tooltip>
                         {/* #5: 태스크 복제 */}
-                        <button onClick={() => duplicateTask(task)} disabled={creating}
-                          title="복제"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-70 hover:opacity-100 transition-all disabled:opacity-30">
-                          <Icon name="copy" size={14} />
-                        </button>
-                        <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
-                          title="삭제"
-                          className="w-7 h-7 flex items-center justify-center rounded-lg opacity-40 hover:opacity-100 hover:bg-[#FFF5F7] transition-all">
-                          {deleting === task.id ? <span className="text-xs">…</span> : <Icon name="trash" size={14} />}
-                        </button>
+                        <Tooltip text="복제">
+                          <button onClick={() => duplicateTask(task)} disabled={creating}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all disabled:opacity-30">
+                            <Icon name="copy" size={14} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip text="삭제">
+                          <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
+                            className="w-7 h-7 flex items-center justify-center rounded-lg opacity-40 hover:opacity-100 hover:bg-[#FFF5F7] transition-all">
+                            {deleting === task.id ? <span className="text-xs">…</span> : <Icon name="trash" size={14} />}
+                          </button>
+                        </Tooltip>
                         {/* #6: 접기/펼치기 */}
-                        <button onClick={() => toggleCollapse(task.id)}
-                          className="text-xs text-[#A0AAB4] hover:text-[#191F28] w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F4F6FA] transition-colors ml-1">
-                          {collapsedTasks.has(task.id) ? "▾" : "▴"}
-                        </button>
+                        <Tooltip text={collapsedTasks.has(task.id) ? "펼치기" : "접기"}>
+                          <button onClick={() => toggleCollapse(task.id)}
+                            className="text-xs text-[#A0AAB4] hover:text-[#191F28] w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F4F6FA] transition-colors ml-0.5">
+                            {collapsedTasks.has(task.id) ? "▾" : "▴"}
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
                   )}
