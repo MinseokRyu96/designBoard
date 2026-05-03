@@ -81,10 +81,10 @@ function getChipPos(dates: string[], date: string, col: number): "solo" | "start
 }
 
 const chipClass: Record<string, string> = {
-  solo: "mx-1 rounded-full",
-  start: "ml-1 mr-0 rounded-l-full rounded-r-none",
+  solo:   "mx-1.5 rounded-full",
+  start:  "ml-1.5 mr-0 rounded-l-full rounded-r-none",
   middle: "mx-0 rounded-none",
-  end: "ml-0 mr-1 rounded-l-none rounded-r-full",
+  end:    "ml-0 mr-1.5 rounded-l-none rounded-r-full",
 };
 
 const SHORTCUTS = [
@@ -246,30 +246,34 @@ export default function DashboardPage() {
               <Link
                 key={day}
                 href={`/daily?date=${dateStr}`}
-                className={`border-b border-r border-[#EEF1F6] min-h-[76px] p-1.5 flex flex-col hover:bg-[#F8FAFF] transition-colors ${
+                className={`border-b border-r border-[#EEF1F6] min-h-[76px] flex flex-col hover:bg-[#F8FAFF] transition-colors ${
                   isSat ? "text-[#3366FF]" : isSun ? "text-[#FF4E6A]" : "text-[#6B7685]"
                 }`}
               >
-                <span
-                  className={`text-[11px] font-semibold w-6 h-6 flex items-center justify-center rounded-full self-center transition-colors ${
-                    isToday
-                      ? "bg-[#3366FF] text-white"
-                      : "hover:bg-[#EEF3FF]"
-                  }`}
-                >
-                  {day}
-                </span>
+                {/* 날짜 + 도트 — 수평 패딩 유지 */}
+                <div className="px-1.5 pt-1.5 flex flex-col items-center">
+                  <span
+                    className={`text-[11px] font-semibold w-6 h-6 flex items-center justify-center rounded-full transition-colors ${
+                      isToday
+                        ? "bg-[#3366FF] text-white"
+                        : "hover:bg-[#EEF3FF]"
+                    }`}
+                  >
+                    {day}
+                  </span>
 
-                {dots.length > 0 && dayStreaks.length === 0 && (
-                  <div className="flex gap-0.5 justify-center mt-1.5">
-                    {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
-                      <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
-                    ))}
-                  </div>
-                )}
+                  {dots.length > 0 && dayStreaks.length === 0 && (
+                    <div className="flex gap-0.5 justify-center mt-1.5">
+                      {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
+                        <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
+                      ))}
+                    </div>
+                  )}
+                </div>
 
+                {/* 칩 — 수평 패딩 없이 셀 엣지까지 확장해 인접 칩과 시각적으로 이어짐 */}
                 {dayStreaks.length > 0 && (
-                  <div className="mt-1 space-y-0.5 overflow-hidden">
+                  <div className="mt-0.5 space-y-0.5 pb-1.5">
                     {dayStreaks.slice(0, 3).map(({ streak, col: c }) => {
                       const pos = getChipPos(streak.dates, dateStr, c);
                       const colors = MEMBER_COLORS[streak.memberName];
