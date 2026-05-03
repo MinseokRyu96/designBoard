@@ -5,9 +5,9 @@ import Link from "next/link";
 import { MEMBER_ORDER, type MemberName } from "@/types";
 
 const MEMBER_COLORS: Record<MemberName, { dot: string; chip: string; text: string }> = {
-  류민석: { dot: "bg-blue-400", chip: "bg-blue-100", text: "text-blue-700" },
-  계은영: { dot: "bg-rose-400", chip: "bg-rose-100", text: "text-rose-700" },
-  한다영: { dot: "bg-amber-400", chip: "bg-amber-100", text: "text-amber-700" },
+  류민석: { dot: "bg-[#3366FF]", chip: "bg-[#EEF3FF]", text: "text-[#3366FF]" },
+  계은영: { dot: "bg-[#FF4E6A]", chip: "bg-[#FFF0F2]", text: "text-[#FF4E6A]" },
+  한다영: { dot: "bg-[#F5A623]", chip: "bg-[#FFF8EC]", text: "text-[#C87D00]" },
 };
 
 const MEMBER_IDS: Record<MemberName, string> = {
@@ -26,7 +26,7 @@ interface TaskStreak {
   taskId: string;
   title: string;
   memberName: MemberName;
-  dates: string[]; // sorted ascending
+  dates: string[];
 }
 
 function getMemberName(id: string): MemberName | null {
@@ -38,7 +38,6 @@ function getDaysInMonth(year: number, month: number) {
 }
 
 function getFirstDow(year: number, month: number) {
-  // 월요일=0 기준
   return (new Date(year, month, 1).getDay() + 6) % 7;
 }
 
@@ -52,7 +51,6 @@ function addDays(dateStr: string, n: number): string {
   return toDateStr(d);
 }
 
-// 연속 날짜 중 주(week) 행을 넘지 않는 범위에서 chip 위치 결정
 function getChipPos(dates: string[], date: string, col: number): "solo" | "start" | "middle" | "end" {
   const idx = dates.indexOf(date);
   const prevConsec = idx > 0 && dates[idx - 1] === addDays(date, -1) && col > 0;
@@ -69,6 +67,12 @@ const chipClass: Record<string, string> = {
   middle: "mx-0 rounded-none",
   end: "ml-0 mr-1 rounded-l-none rounded-r-full",
 };
+
+const SHORTCUTS = [
+  { href: "/daily", label: "Daily Log", desc: "오늘 업무 기록" },
+  { href: "/weekly", label: "Weekly", desc: "주간 현황 & 차주 계획" },
+  { href: "/report/print", label: "보고서 출력", desc: "대표 보고서 자동 생성" },
+];
 
 export default function DashboardPage() {
   const today = new Date();
@@ -87,22 +91,18 @@ export default function DashboardPage() {
       .then((data: LogEntry[]) => {
         if (!Array.isArray(data)) return;
 
-        // 멤버 점 (기존)
         const dotMap = new Map<string, MemberName[]>();
-        // 태스크별 streak 계산
         const taskMap = new Map<string, { title: string; memberName: MemberName; dates: Set<string> }>();
 
         for (const entry of data) {
           const memberName = getMemberName(entry.member_id);
           if (!memberName) continue;
 
-          // 멤버 점
           if (!dotMap.has(entry.log_date)) dotMap.set(entry.log_date, []);
           if (!dotMap.get(entry.log_date)!.includes(memberName)) {
             dotMap.get(entry.log_date)!.push(memberName);
           }
 
-          // 태스크 streak
           if (!entry.task) continue;
           const key = entry.task.id;
           if (!taskMap.has(key)) {
@@ -113,7 +113,6 @@ export default function DashboardPage() {
 
         setMemberDots(dotMap);
 
-        // streak: 날짜 2개 이상인 태스크만 (연속 체크는 렌더링 시)
         const streakList: TaskStreak[] = [];
         for (const [taskId, info] of taskMap.entries()) {
           const sortedDates = [...info.dates].sort();
@@ -127,7 +126,6 @@ export default function DashboardPage() {
   const firstDow = getFirstDow(year, month);
   const todayStr = toDateStr(today);
 
-  // 날짜→해당 날에 보여줄 streak 목록
   const dateStreakMap = new Map<string, { streak: TaskStreak; col: number }[]>();
   for (let i = 0; i < daysInMonth; i++) {
     const day = i + 1;
@@ -150,40 +148,58 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <div className="flex items-center justify-between mb-6">
+      {/* 헤더 */}
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">DesignBoard</h1>
-          <p className="text-sm text-gray-400 mt-0.5">류민석 · 계은영 · 한다영</p>
+          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">이번 달 현황</h1>
+          <p className="text-sm text-[#A0AAB4] mt-1">{year}년 {month + 1}월 팀 활동 캘린더</p>
         </div>
-        <Link href="/report/print"
-          className="px-4 py-2 bg-gray-900 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors">
-          출력하기
+        <Link
+          href="/report/print"
+          className="px-4 py-2 bg-[#191F28] text-white rounded-xl text-sm font-medium hover:bg-[#2D3748] transition-colors"
+        >
+          보고서 출력
         </Link>
       </div>
 
       {/* 멤버 범례 */}
-      <div className="flex gap-4 mb-5">
+      <div className="flex gap-5 mb-6">
         {MEMBER_ORDER.map((name) => (
-          <div key={name} className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
-            <span className="text-xs text-gray-600">{name}</span>
+          <div key={name} className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${MEMBER_COLORS[name].dot}`} />
+            <span className="text-xs font-medium text-[#6B7685]">{name}</span>
           </div>
         ))}
       </div>
 
       {/* 캘린더 */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
         {/* 월 네비게이션 */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <button onClick={prevMonth} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition-colors text-lg">‹</button>
-          <span className="font-semibold text-gray-800">{year}년 {month + 1}월</span>
-          <button onClick={nextMonth} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 rounded hover:bg-gray-100 transition-colors text-lg">›</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#EEF1F6]">
+          <button
+            onClick={prevMonth}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#A0AAB4] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors text-base"
+          >
+            ‹
+          </button>
+          <span className="font-semibold text-[#191F28] text-sm">{year}년 {month + 1}월</span>
+          <button
+            onClick={nextMonth}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-[#A0AAB4] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors text-base"
+          >
+            ›
+          </button>
         </div>
 
         {/* 요일 헤더 */}
-        <div className="grid grid-cols-7 border-b border-gray-100">
+        <div className="grid grid-cols-7 bg-[#F9FAFB]">
           {weekdays.map((d, i) => (
-            <div key={d} className={`text-center text-xs font-medium py-2 ${i === 5 ? "text-blue-400" : i === 6 ? "text-red-400" : "text-gray-400"}`}>
+            <div
+              key={d}
+              className={`text-center text-[11px] font-semibold py-2.5 tracking-wide ${
+                i === 5 ? "text-[#3366FF]" : i === 6 ? "text-[#FF4E6A]" : "text-[#A0AAB4]"
+              }`}
+            >
               {d}
             </div>
           ))}
@@ -192,7 +208,7 @@ export default function DashboardPage() {
         {/* 날짜 셀 */}
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDow }).map((_, i) => (
-            <div key={`e-${i}`} className="border-b border-r border-gray-50 min-h-[80px]" />
+            <div key={`e-${i}`} className="border-b border-r border-[#EEF1F6] min-h-[76px]" />
           ))}
 
           {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -206,23 +222,31 @@ export default function DashboardPage() {
             const isSun = col === 6;
 
             return (
-              <Link key={day} href={`/daily?date=${dateStr}`}
-                className={`border-b border-r border-gray-50 min-h-[80px] p-1.5 flex flex-col hover:bg-blue-50 transition-colors ${isSat ? "text-blue-500" : isSun ? "text-red-500" : "text-gray-700"}`}>
-                {/* 날짜 숫자 */}
-                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full self-center ${isToday ? "bg-gray-900 text-white" : ""}`}>
+              <Link
+                key={day}
+                href={`/daily?date=${dateStr}`}
+                className={`border-b border-r border-[#EEF1F6] min-h-[76px] p-1.5 flex flex-col hover:bg-[#F8FAFF] transition-colors ${
+                  isSat ? "text-[#3366FF]" : isSun ? "text-[#FF4E6A]" : "text-[#6B7685]"
+                }`}
+              >
+                <span
+                  className={`text-[11px] font-semibold w-6 h-6 flex items-center justify-center rounded-full self-center transition-colors ${
+                    isToday
+                      ? "bg-[#3366FF] text-white"
+                      : "hover:bg-[#EEF3FF]"
+                  }`}
+                >
                   {day}
                 </span>
 
-                {/* 멤버 점 (로그 있는 날) */}
                 {dots.length > 0 && dayStreaks.length === 0 && (
-                  <div className="flex gap-0.5 justify-center mt-1">
+                  <div className="flex gap-0.5 justify-center mt-1.5">
                     {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
                       <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
                     ))}
                   </div>
                 )}
 
-                {/* 연결 chip */}
                 {dayStreaks.length > 0 && (
                   <div className="mt-1 space-y-0.5 overflow-hidden">
                     {dayStreaks.slice(0, 3).map(({ streak, col: c }) => {
@@ -235,7 +259,7 @@ export default function DashboardPage() {
                           title={streak.title}
                         >
                           {(pos === "solo" || pos === "start") && (
-                            <span className={`text-[10px] font-medium truncate px-1.5 ${colors.text}`}>
+                            <span className={`text-[9px] font-semibold truncate px-1.5 ${colors.text}`}>
                               {streak.title}
                             </span>
                           )}
@@ -243,7 +267,7 @@ export default function DashboardPage() {
                       );
                     })}
                     {dayStreaks.length > 3 && (
-                      <span className="text-[10px] text-gray-400 px-1">+{dayStreaks.length - 3}</span>
+                      <span className="text-[9px] text-[#A0AAB4] px-1.5">+{dayStreaks.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -255,15 +279,14 @@ export default function DashboardPage() {
 
       {/* 바로가기 */}
       <div className="grid grid-cols-3 gap-3 mt-6">
-        {[
-          { href: "/daily", label: "Daily Log", desc: "오늘 업무 기록" },
-          { href: "/weekly", label: "Weekly", desc: "주간 현황 & 차주 계획" },
-          { href: "/report/print", label: "보고서 출력", desc: "대표 보고서 자동 생성" },
-        ].map((f) => (
-          <Link key={f.href} href={f.href}
-            className="p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all">
-            <p className="font-medium text-gray-800 text-sm">{f.label}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{f.desc}</p>
+        {SHORTCUTS.map((f) => (
+          <Link
+            key={f.href}
+            href={f.href}
+            className="p-4 bg-white border border-[#E2E8F0] rounded-2xl hover:border-[#3366FF] hover:shadow-sm transition-all group"
+          >
+            <p className="font-semibold text-[#191F28] text-sm group-hover:text-[#3366FF] transition-colors">{f.label}</p>
+            <p className="text-xs text-[#A0AAB4] mt-1">{f.desc}</p>
           </Link>
         ))}
       </div>

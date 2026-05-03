@@ -96,7 +96,6 @@ export default function WeeklyPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // 날짜별 로그 그룹핑
   const logsByDay = new Map<string, DailyLogEntry[]>();
   for (let i = 0; i < 7; i++) {
     const d = new Date(weekMonday + "T00:00:00");
@@ -146,36 +145,52 @@ export default function WeeklyPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Weekly</h1>
+    <div className="max-w-3xl mx-auto px-6 py-10">
+      {/* 헤더 */}
+      <div className="flex items-start justify-between mb-7">
+        <div>
+          <h1 className="text-[22px] font-bold text-[#191F28] tracking-tight">Weekly</h1>
+          <p className="text-sm text-[#A0AAB4] mt-1">주간 현황 및 차주 계획</p>
+        </div>
         <Link
           href={`/report/print?type=weekly&date=${weekMonday}`}
-          className="px-4 py-2 bg-gray-900 text-white rounded text-sm font-medium hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 bg-[#191F28] text-white rounded-xl text-sm font-medium hover:bg-[#2D3748] transition-colors"
         >
           출력
         </Link>
       </div>
 
       {/* 주간 네비게이션 */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={prevWeek} className="px-3 py-1.5 border border-gray-200 rounded text-sm text-gray-500 hover:bg-gray-50">← 이전</button>
-        <span className="font-medium text-gray-700 text-sm">{formatWeekLabel(weekMonday)}</span>
-        <button onClick={nextWeek} className="px-3 py-1.5 border border-gray-200 rounded text-sm text-gray-500 hover:bg-gray-50">다음 →</button>
+      <div className="flex items-center gap-3 mb-6 bg-white border border-[#E2E8F0] rounded-2xl px-4 py-3 shadow-sm">
+        <button
+          onClick={prevWeek}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#A0AAB4] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors text-base"
+        >
+          ‹
+        </button>
+        <span className="flex-1 text-center font-semibold text-[#191F28] text-sm">{formatWeekLabel(weekMonday)}</span>
+        <button
+          onClick={nextWeek}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-[#A0AAB4] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors text-base"
+        >
+          ›
+        </button>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-6">
         <MemberTabs selected={selectedMember} onChange={setSelectedMember} />
       </div>
 
       {/* 탭 */}
-      <div className="flex gap-1 mb-5 border-b border-gray-200">
+      <div className="flex gap-1 mb-6 bg-[#F4F6FA] p-1 rounded-xl">
         {[{ key: "this", label: "이번 주 기록" }, { key: "next", label: "차주 예정" }].map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setTab(key as "this" | "next")}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === key ? "text-blue-600 border-blue-600" : "text-gray-400 border-transparent hover:text-gray-700"
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              tab === key
+                ? "bg-white text-[#191F28] shadow-sm"
+                : "text-[#A0AAB4] hover:text-[#6B7685]"
             }`}
           >
             {label}
@@ -184,37 +199,65 @@ export default function WeeklyPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400">불러오는 중...</div>
+        <div className="text-center py-16 text-[#A0AAB4] text-sm">불러오는 중...</div>
       ) : tab === "this" ? (
-        /* ── 이번 주 기록 ── */
-        <div className="space-y-4">
+        <div className="space-y-3">
           {Array.from(logsByDay.entries()).map(([dateStr, logs], i) => {
             const d = new Date(dateStr + "T00:00:00");
             const dayLabel = `${WEEKDAY_LABELS[i]} ${d.getMonth() + 1}/${d.getDate()}`;
+            const isSat = i === 5;
+            const isSun = i === 6;
             return (
-              <div key={dateStr}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-semibold text-gray-500">{dayLabel}</span>
-                  <Link href={`/daily?date=${dateStr}`} className="text-xs text-blue-400 hover:underline">+ 기록</Link>
+              <div key={dateStr} className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
+                <div className={`flex items-center justify-between px-4 py-3 border-b border-[#EEF1F6] ${
+                  isSat ? "bg-[#F0F5FF]" : isSun ? "bg-[#FFF5F7]" : "bg-[#F9FAFB]"
+                }`}>
+                  <span className={`text-xs font-bold tracking-wide ${
+                    isSat ? "text-[#3366FF]" : isSun ? "text-[#FF4E6A]" : "text-[#6B7685]"
+                  }`}>
+                    {dayLabel}
+                  </span>
+                  <Link
+                    href={`/daily?date=${dateStr}`}
+                    className="text-xs text-[#3366FF] hover:underline font-medium"
+                  >
+                    + 기록
+                  </Link>
                 </div>
                 {logs.length === 0 ? (
-                  <div className="text-xs text-gray-300 pl-2 pb-2">기록 없음</div>
+                  <div className="px-4 py-3 text-xs text-[#C0C8D4]">기록 없음</div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="divide-y divide-[#EEF1F6]">
                     {logs.map((log) => (
-                      <div key={log.id} className="bg-white border border-gray-100 rounded-lg p-4">
+                      <div key={log.id} className="px-4 py-3">
                         <div className="flex items-center gap-2 mb-2">
                           {log.task?.project && (
-                            <span className="text-xs text-gray-400">{log.task.project.name}</span>
+                            <span className="text-xs text-[#A0AAB4]">{log.task.project.name}</span>
                           )}
-                          <span className="font-medium text-sm text-gray-800">{log.task?.title ?? "-"}</span>
+                          <span className="font-semibold text-sm text-[#191F28]">{log.task?.title ?? "-"}</span>
                           {log.task && <StatusBadge status={log.task.status} />}
                         </div>
                         <div className="space-y-1">
-                          {log.progress && <p className="text-xs text-gray-600"><span className="text-gray-400">진행</span> {log.progress}</p>}
-                          {log.issue && <p className="text-xs text-gray-600"><span className="text-gray-400">이슈</span> {log.issue}</p>}
-                          {log.next_action && <p className="text-xs text-gray-600"><span className="text-gray-400">다음</span> {log.next_action}</p>}
-                          {log.insight && <p className="text-xs text-blue-600"><span className="text-gray-400">인사이트</span> {log.insight}</p>}
+                          {log.progress && (
+                            <p className="text-xs text-[#6B7685]">
+                              <span className="font-semibold text-[#A0AAB4] mr-1.5">진행</span>{log.progress}
+                            </p>
+                          )}
+                          {log.issue && (
+                            <p className="text-xs text-[#6B7685]">
+                              <span className="font-semibold text-[#A0AAB4] mr-1.5">이슈</span>{log.issue}
+                            </p>
+                          )}
+                          {log.next_action && (
+                            <p className="text-xs text-[#6B7685]">
+                              <span className="font-semibold text-[#A0AAB4] mr-1.5">다음</span>{log.next_action}
+                            </p>
+                          )}
+                          {log.insight && (
+                            <p className="text-xs text-[#3366FF]">
+                              <span className="font-semibold text-[#A0AAB4] mr-1.5">인사이트</span>{log.insight}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -225,16 +268,15 @@ export default function WeeklyPage() {
           })}
         </div>
       ) : (
-        /* ── 차주 예정 ── */
         <div>
-          <p className="text-xs text-gray-400 mb-3">{formatWeekLabel(nextMonday)} 예정 업무</p>
+          <p className="text-xs font-medium text-[#A0AAB4] mb-3">{formatWeekLabel(nextMonday)} 예정 업무</p>
           <div className="space-y-2">
             {nextTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg px-4 py-3">
+              <div key={task.id} className="flex items-center justify-between bg-white border border-[#E2E8F0] rounded-2xl px-4 py-3.5 shadow-sm">
                 <div>
-                  <p className="font-medium text-sm text-gray-800">{task.title}</p>
+                  <p className="font-semibold text-sm text-[#191F28]">{task.title}</p>
                   {(task.start_date || task.due_date) && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-[#A0AAB4] mt-0.5">
                       {task.start_date ?? "-"} ~ {task.due_date ?? "-"}
                     </p>
                   )}
@@ -242,56 +284,72 @@ export default function WeeklyPage() {
                 <button
                   onClick={() => deleteNextTask(task.id)}
                   disabled={deleting === task.id}
-                  className="text-xs text-gray-300 hover:text-red-400 transition-colors"
+                  className="text-xs text-[#C0C8D4] hover:text-[#FF4E6A] transition-colors"
                 >
                   {deleting === task.id ? "..." : "삭제"}
                 </button>
               </div>
             ))}
             {nextTasks.length === 0 && !showForm && (
-              <div className="text-center py-10 text-gray-300 text-sm">등록된 차주 예정 업무가 없습니다.</div>
+              <div className="text-center py-12 text-[#A0AAB4] text-sm">등록된 차주 예정 업무가 없습니다.</div>
             )}
           </div>
 
           {showForm ? (
-            <div className="mt-4 bg-white border border-blue-200 rounded-xl p-5">
+            <div className="mt-4 bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">업무명 *</label>
+                  <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">업무명 *</label>
                   <input
                     value={newTask.title}
                     onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                     onKeyDown={(e) => e.key === "Enter" && addNextTask()}
                     autoFocus
-                    className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-sm text-[#191F28] focus:outline-none focus:ring-2 focus:ring-[#3366FF]"
                     placeholder="차주 예정 업무명"
                   />
                 </div>
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">시작일</label>
-                    <input type="date" value={newTask.start_date}
+                    <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">시작일</label>
+                    <input
+                      type="date"
+                      value={newTask.start_date}
                       onChange={(e) => setNewTask({ ...newTask, start_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-sm text-[#191F28] focus:outline-none focus:ring-2 focus:ring-[#3366FF]"
+                    />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">완료예정일</label>
-                    <input type="date" value={newTask.due_date}
+                    <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">완료예정일</label>
+                    <input
+                      type="date"
+                      value={newTask.due_date}
                       onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-sm text-[#191F28] focus:outline-none focus:ring-2 focus:ring-[#3366FF]"
+                    />
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 mt-4 justify-end">
-                <button onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border border-gray-200 rounded text-sm text-gray-600 hover:bg-gray-50">취소</button>
-                <button onClick={addNextTask}
-                  className="px-4 py-2 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">추가</button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-sm text-[#6B7685] hover:bg-[#F4F6FA] transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={addNextTask}
+                  className="px-5 py-2 bg-[#3366FF] text-white rounded-xl text-sm font-medium hover:bg-[#2255EE] transition-colors"
+                >
+                  추가
+                </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowForm(true)}
-              className="mt-4 w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
+            <button
+              onClick={() => setShowForm(true)}
+              className="mt-4 w-full py-3.5 border-2 border-dashed border-[#E2E8F0] rounded-2xl text-sm text-[#A0AAB4] hover:border-[#3366FF] hover:text-[#3366FF] transition-colors"
+            >
               + 차주 업무 추가
             </button>
           )}
