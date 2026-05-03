@@ -249,7 +249,7 @@ export default function DashboardPage() {
   const todayStr = toDateStr(today);
 
   // 주(week) 단위로 슬롯을 고정 배정 → 같은 태스크가 여러 날에 걸쳐 동일한 행(row)에 표시됨
-  const MAX_CHIP_ROWS = 3;
+  const MAX_CHIP_ROWS = 6;
   const chipSlotMap = new Map<string, (TaskStreak | null)[]>(); // date → 슬롯 배열
   const chipOverflowMap = new Map<string, number>();            // date → 넘친 칩 수
 
@@ -401,7 +401,7 @@ export default function DashboardPage() {
         {/* 날짜 셀 */}
         <div className="grid grid-cols-7">
           {Array.from({ length: firstDow }).map((_, i) => (
-            <div key={`e-${i}`} className="border-b border-r border-[#EEF1F6] min-h-[76px]" />
+            <div key={`e-${i}`} className="border-b border-r border-[#EEF1F6] min-h-[120px]" />
           ))}
 
           {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -422,7 +422,7 @@ export default function DashboardPage() {
               <Link
                 key={day}
                 href={`/daily?date=${dateStr}`}
-                className={`border-b border-r border-[#EEF1F6] min-h-[76px] flex flex-col hover:bg-[#F8FAFF] transition-colors ${
+                className={`border-b border-r border-[#EEF1F6] min-h-[120px] flex flex-col hover:bg-[#F8FAFF] transition-colors ${
                   isSat ? "text-[#3366FF]" : isRed ? "text-[#FF4E6A]" : "text-[#6B7685]"
                 }`}
               >
