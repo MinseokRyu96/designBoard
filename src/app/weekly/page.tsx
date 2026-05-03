@@ -37,30 +37,28 @@ interface NextTask {
   week_of: string;
 }
 
-function getMonday(d: Date): Date {
-  const day = d.getDay();
-  const diff = (day + 6) % 7;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - diff);
-  return monday;
+function getSunday(d: Date): Date {
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - d.getDay()); // 일요일로 되돌림 (0=일)
+  return sunday;
 }
 
 function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function formatWeekLabel(monday: string): string {
-  const d = new Date(monday + "T00:00:00");
-  const sunday = new Date(d);
-  sunday.setDate(d.getDate() + 6);
-  return `${d.getMonth() + 1}/${d.getDate()}(월) ~ ${sunday.getMonth() + 1}/${sunday.getDate()}(일)`;
+function formatWeekLabel(weekStart: string): string {
+  const d = new Date(weekStart + "T00:00:00");
+  const sat = new Date(d);
+  sat.setDate(d.getDate() + 6);
+  return `${d.getMonth() + 1}/${d.getDate()}(일) ~ ${sat.getMonth() + 1}/${sat.getDate()}(토)`;
 }
 
-const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function WeeklyPage() {
   const [selectedMember, setSelectedMember] = useState<MemberName>(MEMBER_ORDER[0]);
-  const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getMonday(new Date())));
+  const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getSunday(new Date())));
   const [tab, setTab] = useState<"this" | "next">("this");
 
   const [dailyLogs, setDailyLogs] = useState<DailyLogEntry[]>([]);
@@ -208,8 +206,8 @@ export default function WeeklyPage() {
           {Array.from(logsByDay.entries()).map(([dateStr, logs], i) => {
             const d = new Date(dateStr + "T00:00:00");
             const dayLabel = `${WEEKDAY_LABELS[i]} ${d.getMonth() + 1}/${d.getDate()}`;
-            const isSat = i === 5;
-            const isSun = i === 6;
+            const isSun = i === 0;
+            const isSat = i === 6;
             return (
               <div key={dateStr} className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
                 <div className={`flex items-center justify-between px-4 py-3 border-b border-[#EEF1F6] ${
