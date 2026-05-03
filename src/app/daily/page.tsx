@@ -152,7 +152,7 @@ function DailyContent() {
 
   async function createTask() {
     if (!newTask.title) return;
-    await fetch("/api/tasks", {
+    const taskRes = await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -165,6 +165,19 @@ function DailyContent() {
         due_date: newTask.due_date || undefined,
       }),
     });
+    const task = await taskRes.json();
+    // 업무 추가 시 해당 날짜로 빈 daily_log 생성 — Dashboard/Weekly 반영을 위해
+    if (task?.id) {
+      await fetch("/api/daily-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task_id: task.id,
+          member_id: MEMBER_IDS[selectedMember],
+          log_date: date,
+        }),
+      });
+    }
     setShowNewTask(false);
     setNewTask({ title: "", project_name: "", purpose: "", status: "진행중", due_date: "" });
     fetchData();
