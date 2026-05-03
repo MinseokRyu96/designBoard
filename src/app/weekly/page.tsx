@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
+import TaskAttachments from "@/components/ui/TaskAttachments";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import Link from "next/link";
 
@@ -259,6 +260,9 @@ export default function WeeklyPage() {
                             </p>
                           )}
                         </div>
+                        {log.task && (
+                          <TaskAttachments taskId={log.task.id} readOnly />
+                        )}
                       </div>
                     ))}
                   </div>

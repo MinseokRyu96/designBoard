@@ -13,9 +13,10 @@ interface Attachment {
 
 interface TaskAttachmentsProps {
   taskId: string;
+  readOnly?: boolean;
 }
 
-export default function TaskAttachments({ taskId }: TaskAttachmentsProps) {
+export default function TaskAttachments({ taskId, readOnly = false }: TaskAttachmentsProps) {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [mode, setMode] = useState<"idle" | "link" | "image">("idle");
   const [linkUrl, setLinkUrl] = useState("");
@@ -84,7 +85,7 @@ export default function TaskAttachments({ taskId }: TaskAttachmentsProps) {
     <div className="mt-1 pt-4 border-t border-[#EEF1F6]">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-[#A0AAB4] uppercase tracking-wide">첨부</span>
-        {mode === "idle" && (
+        {!readOnly && mode === "idle" && (
           <div className="flex gap-2">
             <button
               onClick={() => setMode("link")}
@@ -102,18 +103,20 @@ export default function TaskAttachments({ taskId }: TaskAttachmentsProps) {
         )}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) uploadImage(file);
-        }}
-      />
+      {!readOnly && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) uploadImage(file);
+          }}
+        />
+      )}
 
-      {mode === "link" && (
+      {!readOnly && mode === "link" && (
         <div className="mb-3 p-3 bg-[#F9FAFB] border border-[#E2E8F0] rounded-xl space-y-2">
           <input
             value={linkUrl}
@@ -146,14 +149,14 @@ export default function TaskAttachments({ taskId }: TaskAttachmentsProps) {
         </div>
       )}
 
-      {uploading && (
+      {!readOnly && uploading && (
         <div className="text-xs text-[#A0AAB4] py-1.5 flex items-center gap-1.5">
           <span className="w-3 h-3 border-2 border-[#3366FF] border-t-transparent rounded-full animate-spin" />
           업로드 중...
         </div>
       )}
 
-      {uploadError && (
+      {!readOnly && uploadError && (
         <div className="text-xs text-[#FF4E6A] py-1.5 flex items-center justify-between gap-2 bg-[#FFF5F7] px-3 rounded-lg border border-[#FFD6DD]">
           <span>⚠ {uploadError}</span>
           <button onClick={() => setUploadError(null)} className="text-[#C0C8D4] hover:text-[#6B7685] shrink-0">✕</button>
@@ -190,19 +193,21 @@ export default function TaskAttachments({ taskId }: TaskAttachmentsProps) {
                   <span className="text-xs text-[#6B7685] truncate">{att.name}</span>
                 </div>
               )}
-              <button
-                onClick={() => deleteAttachment(att.id)}
-                disabled={deleting === att.id}
-                className="shrink-0 text-xs text-[#C0C8D4] hover:text-[#FF4E6A] opacity-0 group-hover:opacity-100 transition-all"
-              >
-                {deleting === att.id ? "..." : "✕"}
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={() => deleteAttachment(att.id)}
+                  disabled={deleting === att.id}
+                  className="shrink-0 text-xs text-[#C0C8D4] hover:text-[#FF4E6A] opacity-0 group-hover:opacity-100 transition-all"
+                >
+                  {deleting === att.id ? "..." : "✕"}
+                </button>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {attachments.length === 0 && mode === "idle" && !uploadError && (
+      {attachments.length === 0 && mode === "idle" && !uploadError && !readOnly && (
         <p className="text-xs text-[#C0C8D4]">첨부 없음</p>
       )}
     </div>
