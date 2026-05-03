@@ -438,14 +438,13 @@ export default function DashboardPage() {
                     {day}
                   </span>
 
-                  {holiday && (
-                    <span className="text-[8px] font-medium text-[#FF4E6A] leading-tight mt-0.5 text-center truncate w-full px-0.5">
-                      {holiday}
-                    </span>
-                  )}
+                  {/* 공휴일 자리 — 없어도 h-3으로 고정해 chip 시작 Y를 맞춤 */}
+                  <span className="h-3 mt-0.5 text-[8px] font-medium text-[#FF4E6A] leading-none text-center truncate w-full px-0.5">
+                    {holiday ?? ""}
+                  </span>
 
                   {dots.length > 0 && !hasAnyChip && (
-                    <div className="flex gap-0.5 justify-center mt-1">
+                    <div className="flex gap-0.5 justify-center">
                       {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
                         <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
                       ))}
