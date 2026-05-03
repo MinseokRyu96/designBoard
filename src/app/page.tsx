@@ -19,18 +19,37 @@ const MEMBER_IDS: Record<MemberName, string> = {
 interface LogEntry {
   log_date: string;
   member_id: string;
-  task: { id: string; title: string } | null;
+}
+
+interface TaskEntry {
+  id: string;
+  member_id: string;
+  title: string;
+  start_date: string | null;
+  due_date: string | null;
 }
 
 interface TaskStreak {
   taskId: string;
   title: string;
   memberName: MemberName;
-  dates: string[];
+  dates: string[]; // start_date ~ due_date 전체 구간
 }
 
 function getMemberName(id: string): MemberName | null {
   return (Object.entries(MEMBER_IDS).find(([, v]) => v === id)?.[0] as MemberName) ?? null;
+}
+
+function dateRange(start: string, end: string, clampFrom: string, clampTo: string): string[] {
+  const from = start < clampFrom ? clampFrom : start;
+  const to = end > clampTo ? clampTo : end;
+  const dates: string[] = [];
+  const d = new Date(from + "T00:00:00");
+  while (toDateStr(d) <= to) {
+    dates.push(toDateStr(d));
+    d.setDate(d.getDate() + 1);
+  }
+  return dates;
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -86,40 +105,42 @@ export default function DashboardPage() {
     const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
-    fetch(`/api/daily-logs?from=${from}&to=${to}`)
+    // member dots: daily_logs 기반
+    const logsPromise = fetch(`/api/daily-logs?from=${from}&to=${to}`)
       .then(r => r.json())
       .then((data: LogEntry[]) => {
         if (!Array.isArray(data)) return;
-
         const dotMap = new Map<string, MemberName[]>();
-        const taskMap = new Map<string, { title: string; memberName: MemberName; dates: Set<string> }>();
-
         for (const entry of data) {
           const memberName = getMemberName(entry.member_id);
           if (!memberName) continue;
-
           if (!dotMap.has(entry.log_date)) dotMap.set(entry.log_date, []);
           if (!dotMap.get(entry.log_date)!.includes(memberName)) {
             dotMap.get(entry.log_date)!.push(memberName);
           }
-
-          if (!entry.task) continue;
-          const key = entry.task.id;
-          if (!taskMap.has(key)) {
-            taskMap.set(key, { title: entry.task.title, memberName, dates: new Set() });
-          }
-          taskMap.get(key)!.dates.add(entry.log_date);
         }
-
         setMemberDots(dotMap);
+      });
 
+    // chips: tasks의 start_date ~ due_date 전체 구간 기반
+    const tasksPromise = fetch(`/api/tasks?from=${from}&to=${to}`)
+      .then(r => r.json())
+      .then((data: TaskEntry[]) => {
+        if (!Array.isArray(data)) return;
         const streakList: TaskStreak[] = [];
-        for (const [taskId, info] of taskMap.entries()) {
-          const sortedDates = [...info.dates].sort();
-          streakList.push({ taskId, title: info.title, memberName: info.memberName, dates: sortedDates });
+        for (const task of data) {
+          const memberName = getMemberName(task.member_id);
+          if (!memberName || !task.start_date) continue;
+          const end = task.due_date ?? task.start_date;
+          const dates = dateRange(task.start_date, end, from, to);
+          if (dates.length > 0) {
+            streakList.push({ taskId: task.id, title: task.title, memberName, dates });
+          }
         }
         setStreaks(streakList);
       });
+
+    Promise.all([logsPromise, tasksPromise]);
   }, [year, month]);
 
   const daysInMonth = getDaysInMonth(year, month);

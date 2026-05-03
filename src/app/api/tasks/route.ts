@@ -5,6 +5,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const memberId = searchParams.get("member_id");
   const date = searchParams.get("date");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
   const supabase = await createClient();
 
@@ -16,6 +18,9 @@ export async function GET(request: NextRequest) {
   if (memberId) query = query.eq("member_id", memberId);
   if (date) {
     query = query.lte("start_date", date).or(`due_date.gte.${date},due_date.is.null`);
+  } else if (from && to) {
+    // 해당 기간에 겹치는 task: start_date <= to AND (due_date >= from OR due_date IS NULL)
+    query = query.lte("start_date", to).or(`due_date.gte.${from},due_date.is.null`);
   }
 
   const { data, error } = await query;
