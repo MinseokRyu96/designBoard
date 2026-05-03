@@ -17,9 +17,11 @@ function PrintContent() {
   const [type, setType] = useState<"daily" | "weekly">(
     (searchParams.get("type") as "daily" | "weekly") ?? "daily"
   );
-  const [date, setDate] = useState(
-    searchParams.get("date") ?? new Date().toISOString().split("T")[0]
-  );
+  const [date, setDate] = useState(() => {
+    if (searchParams.get("date")) return searchParams.get("date")!;
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -175,9 +177,11 @@ function MemberSection({
       ) : (
         member.projects.map((project) => (
           <div key={project.project_id} className="mb-5">
-            <h3 className="print-project-title font-semibold text-base mb-2">
-              {project.project_name}
-            </h3>
+            {project.project_name && (
+              <h3 className="print-project-title font-semibold text-base mb-2">
+                {project.project_name}
+              </h3>
+            )}
             {project.tasks.map((task) => (
               <div key={task.id} className="ml-2 mb-4 pb-4 border-b border-gray-100 last:border-0">
                 <div className="flex items-center gap-2 mb-2">

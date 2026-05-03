@@ -100,6 +100,9 @@ export async function GET(request: NextRequest) {
       { project_id: string; project_name: string; tasks: unknown[] }
     >();
 
+    // 중복 task 제거 (같은 task가 여러 날짜 로그에 있을 수 있음)
+    const seenTaskIds = new Set<string>();
+
     for (const log of memberLogs) {
       const task = (log.task as unknown) as {
         id: string;
@@ -111,14 +114,18 @@ export async function GET(request: NextRequest) {
         project: { id: string; name: string } | null;
       } | null;
 
-      if (!task || !task.project) continue;
+      if (!task) continue;
+      if (seenTaskIds.has(task.id)) continue;
+      seenTaskIds.add(task.id);
 
-      const projectId = task.project.id;
+      // 프로젝트 없는 업무는 "__none__" 키로 그룹핑
+      const projectId = task.project?.id ?? "__none__";
+      const projectName = task.project?.name ?? "";
 
       if (!projectMap.has(projectId)) {
         projectMap.set(projectId, {
           project_id: projectId,
-          project_name: task.project.name,
+          project_name: projectName,
           tasks: [],
         });
       }
