@@ -97,7 +97,7 @@ function PrintContent() {
       </div>
 
       {/* 미리보기 영역 */}
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8">
         {loading && (
           <div className="text-center py-20 text-gray-400">보고서 생성 중...</div>
         )}

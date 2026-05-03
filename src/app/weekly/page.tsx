@@ -145,7 +145,7 @@ export default function WeeklyPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-5xl mx-auto px-6 py-10">
       {/* 헤더 */}
       <div className="flex items-start justify-between mb-7">
         <div>
