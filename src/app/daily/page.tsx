@@ -74,6 +74,7 @@ function DailyContent() {
   const [detailForm, setDetailForm] = useState({
     project_name: "", purpose: "", status: "진행중" as TaskStatus, due_date: "",
   });
+  const [creating, setCreating] = useState(false);
   const [focusNewTaskId, setFocusNewTaskId] = useState<string | null>(null);
   const logRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
 
@@ -221,34 +222,42 @@ function DailyContent() {
   // ── #1: 퀵 업무 생성 ───────────────────────────────────────────────────
   async function quickCreate() {
     const title = quickTitle.trim();
-    if (!title) return;
+    if (!title || creating) return;
 
+    // 현재 폼 값을 로컬에 캡처한 뒤 즉시 리셋 — 연속 생성 시 값 공유 방지
+    const { project_name, purpose, status, due_date } = detailForm;
     setQuickTitle("");
-    const taskRes = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        member_id: MEMBER_IDS[selectedMember],
-        title,
-        project_name: detailForm.project_name || undefined,
-        purpose: detailForm.purpose || undefined,
-        status: detailForm.status,
-        start_date: date,
-        due_date: detailForm.due_date || undefined,
-      }),
-    });
-    const task = await taskRes.json();
-    if (task?.id) {
-      await fetch("/api/daily-logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ task_id: task.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
-      });
-      setFocusNewTaskId(task.id);
-    }
     setShowDetail(false);
     setDetailForm({ project_name: "", purpose: "", status: "진행중", due_date: "" });
-    await fetchData();
+    setCreating(true);
+
+    try {
+      const taskRes = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: MEMBER_IDS[selectedMember],
+          title,
+          project_name: project_name || undefined,
+          purpose: purpose || undefined,
+          status,
+          start_date: date,
+          due_date: due_date || undefined,
+        }),
+      });
+      const task = await taskRes.json();
+      if (task?.id) {
+        await fetch("/api/daily-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task_id: task.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
+        });
+        setFocusNewTaskId(task.id);
+      }
+      await fetchData();
+    } finally {
+      setCreating(false);
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────
@@ -301,9 +310,10 @@ function DailyContent() {
           {quickTitle.trim() && (
             <button
               onClick={quickCreate}
-              className="text-xs px-3 py-1.5 bg-[#3366FF] text-white rounded-lg font-medium hover:bg-[#2255EE] transition-colors shrink-0"
+              disabled={creating}
+              className="text-xs px-3 py-1.5 bg-[#3366FF] text-white rounded-lg font-medium hover:bg-[#2255EE] disabled:opacity-50 transition-colors shrink-0"
             >
-              추가
+              {creating ? "추가 중…" : "추가"}
             </button>
           )}
         </div>
