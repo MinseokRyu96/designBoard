@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,7 +11,6 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-
   const { data, error } = await supabase
     .from("task_attachments")
     .select("id, task_id, type, url, name, created_at")
@@ -18,15 +18,13 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json(data);
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
   const contentType = request.headers.get("content-type") ?? "";
 
-  // 이미지 업로드 (multipart/form-data)
+  // 이미지 업로드 (multipart/form-data) — service role로 Storage 접근
   if (contentType.includes("multipart/form-data")) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
@@ -34,40 +32,36 @@ export async function POST(request: NextRequest) {
     const name = formData.get("name") as string | null;
 
     if (!file || !taskId) {
-      return NextResponse.json(
-        { error: "file과 task_id가 필요합니다." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "file과 task_id가 필요합니다." }, { status: 400 });
     }
 
+    const serviceClient = createServiceClient();
     const ext = file.name.split(".").pop();
     const filePath = `${taskId}/${Date.now()}.${ext}`;
 
-    const { error: uploadError } = await supabase.storage
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = new Uint8Array(arrayBuffer);
+
+    const { error: uploadError } = await serviceClient.storage
       .from("attachments")
-      .upload(filePath, file, { contentType: file.type, upsert: false });
+      .upload(filePath, buffer, { contentType: file.type, upsert: false });
 
     if (uploadError) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
-    const { data: publicData } = supabase.storage
+    const { data: publicData } = serviceClient.storage
       .from("attachments")
       .getPublicUrl(filePath);
 
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("task_attachments")
-      .insert({
-        task_id: taskId,
-        type: "image",
-        url: publicData.publicUrl,
-        name: name ?? file.name,
-      })
+      .insert({ task_id: taskId, type: "image", url: publicData.publicUrl, name: name ?? file.name })
       .select()
       .single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
     return NextResponse.json(data, { status: 201 });
   }
 
@@ -76,12 +70,10 @@ export async function POST(request: NextRequest) {
   const { task_id, url, name } = body;
 
   if (!task_id || !url) {
-    return NextResponse.json(
-      { error: "task_id와 url이 필요합니다." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "task_id와 url이 필요합니다." }, { status: 400 });
   }
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("task_attachments")
     .insert({ task_id, type: "link", url, name: name ?? url })
@@ -89,7 +81,6 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -102,26 +93,23 @@ export async function DELETE(request: NextRequest) {
   }
 
   const supabase = await createClient();
-
-  // 이미지인 경우 Storage에서도 삭제
   const { data: attachment } = await supabase
     .from("task_attachments")
     .select("type, url")
     .eq("id", id)
     .single();
 
+  // 이미지면 Storage에서도 삭제 — service role 사용
   if (attachment?.type === "image") {
     const url = new URL(attachment.url);
-    // publicUrl 경로에서 버킷 이후 경로 추출
     const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/attachments\/(.+)/);
     if (pathMatch) {
-      await supabase.storage.from("attachments").remove([pathMatch[1]]);
+      const serviceClient = createServiceClient();
+      await serviceClient.storage.from("attachments").remove([pathMatch[1]]);
     }
   }
 
   const { error } = await supabase.from("task_attachments").delete().eq("id", id);
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
   return NextResponse.json({ success: true });
 }
