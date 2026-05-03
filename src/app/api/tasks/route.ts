@@ -17,10 +17,13 @@ export async function GET(request: NextRequest) {
 
   if (memberId) query = query.eq("member_id", memberId);
   if (date) {
-    query = query.lte("start_date", date).or(`due_date.gte.${date},due_date.is.null`);
+    // due_date 있는 태스크: 해당 날짜에 활성 (start_date <= date AND due_date >= date)
+    // due_date 없는 태스크: start_date 당일만
+    query = query.lte("start_date", date).or(`due_date.gte.${date},and(due_date.is.null,start_date.eq.${date})`);
   } else if (from && to) {
-    // 해당 기간에 겹치는 task: start_date <= to AND (due_date >= from OR due_date IS NULL)
-    query = query.lte("start_date", to).or(`due_date.gte.${from},due_date.is.null`);
+    // due_date 있는 태스크: 기간과 겹치는 경우
+    // due_date 없는 태스크: start_date가 해당 월 범위 내인 경우만
+    query = query.lte("start_date", to).or(`due_date.gte.${from},and(due_date.is.null,start_date.gte.${from})`);
   }
 
   const { data, error } = await query;

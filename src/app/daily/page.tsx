@@ -61,6 +61,7 @@ function DailyContent() {
   const [tasks, setTasks] = useState<TaskWithLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [collapsedTasks, setCollapsedTasks] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     title: string; project_name: string; purpose: string;
@@ -175,6 +176,61 @@ function DailyContent() {
   function updateLog(taskId: string, field: string, value: string) {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, log: { ...t.log, [field]: value }, logDirty: true } : t));
     scheduleSave(taskId); // #2: 1.5초 후 자동 저장
+  }
+
+  // ── #4: 상태 퀵 토글 ───────────────────────────────────────────────────
+  const STATUS_CYCLE: TaskStatus[] = ["진행중", "완료", "보류"];
+  async function updateStatus(taskId: string, current: TaskStatus) {
+    const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length];
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: next } : t));
+    await fetch("/api/tasks", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: taskId, status: next }),
+    });
+  }
+
+  // ── #5: 태스크 복제 ────────────────────────────────────────────────────
+  async function duplicateTask(task: TaskWithLog) {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const taskRes = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          member_id: MEMBER_IDS[selectedMember],
+          title: task.title,
+          project_name: task.project?.name || undefined,
+          purpose: task.purpose || undefined,
+          status: task.status,
+          start_date: date,
+          due_date: task.due_date || undefined,
+        }),
+      });
+      const newTask = await taskRes.json();
+      if (newTask?.id) {
+        await fetch("/api/daily-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ task_id: newTask.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
+        });
+        setFocusNewTaskId(newTask.id);
+      }
+      await fetchData();
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  // ── #6: 카드 접기/펼치기 ───────────────────────────────────────────────
+  function toggleCollapse(taskId: string) {
+    setCollapsedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
   }
 
   async function deleteTask(taskId: string) {
@@ -433,68 +489,82 @@ function DailyContent() {
                         {task.purpose && <p className="text-sm text-[#6B7685] mt-1">{task.purpose}</p>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                        <StatusBadge status={task.status} />
+                        {/* #4: 클릭으로 상태 순환 */}
+                        <StatusBadge status={task.status} onClick={() => updateStatus(task.id, task.status)} />
                         {task.due_date && <span className="text-xs text-[#A0AAB4]">~{task.due_date}</span>}
                         <button onClick={() => startEdit(task)}
                           className="text-xs text-[#A0AAB4] hover:text-[#3366FF] border border-[#E2E8F0] rounded-lg px-2.5 py-1 transition-colors">
                           수정
                         </button>
+                        {/* #5: 태스크 복제 */}
+                        <button onClick={() => duplicateTask(task)} disabled={creating}
+                          className="text-xs text-[#A0AAB4] hover:text-[#3366FF] border border-[#E2E8F0] rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40">
+                          복제
+                        </button>
                         <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
                           className="text-xs text-[#C0C8D4] hover:text-[#FF4E6A] transition-colors">
                           {deleting === task.id ? "..." : "삭제"}
+                        </button>
+                        {/* #6: 접기/펼치기 */}
+                        <button onClick={() => toggleCollapse(task.id)}
+                          className="text-xs text-[#A0AAB4] hover:text-[#191F28] w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#F4F6FA] transition-colors ml-1">
+                          {collapsedTasks.has(task.id) ? "▾" : "▴"}
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* 로그 필드 */}
-                <div className="px-5 py-4 space-y-4">
-                  {LOG_FIELDS.map(({ field, label, placeholder }) => (
-                    <div key={field}>
-                      <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">{label}</label>
-                      <textarea
-                        rows={2}
-                        value={task.log[field]}
-                        onChange={(e) => updateLog(task.id, field, e.target.value)}
-                        placeholder={placeholder}
-                        ref={(el) => {
-                          // progress 필드 ref → 신규 업무 포커스에 사용
-                          if (field === "progress") {
-                            if (el) logRefs.current.set(task.id, el);
-                            else logRefs.current.delete(task.id);
-                          }
-                        }}
-                        className="w-full border border-[#EEF1F6] rounded-xl px-3 py-2.5 text-sm text-[#191F28] resize-none focus:outline-none focus:ring-2 focus:ring-[#3366FF] bg-[#F9FAFB] placeholder:text-[#C0C8D4] transition-colors"
-                      />
+                {/* #6: 로그 필드 — collapsed 시 숨김 */}
+                {!collapsedTasks.has(task.id) && (
+                  <>
+                    <div className="px-5 py-4 space-y-4">
+                      {LOG_FIELDS.map(({ field, label, placeholder }) => (
+                        <div key={field}>
+                          <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">{label}</label>
+                          <textarea
+                            rows={2}
+                            value={task.log[field]}
+                            onChange={(e) => updateLog(task.id, field, e.target.value)}
+                            placeholder={placeholder}
+                            ref={(el) => {
+                              if (field === "progress") {
+                                if (el) logRefs.current.set(task.id, el);
+                                else logRefs.current.delete(task.id);
+                              }
+                            }}
+                            className="w-full border border-[#EEF1F6] rounded-xl px-3 py-2.5 text-sm text-[#191F28] resize-none focus:outline-none focus:ring-2 focus:ring-[#3366FF] bg-[#F9FAFB] placeholder:text-[#C0C8D4] transition-colors"
+                          />
+                        </div>
+                      ))}
+
+                      {/* ── #2: 저장 상태 표시 ── */}
+                      <div className="flex justify-end items-center gap-3 pt-1 min-h-[32px]">
+                        {status === "saving" && (
+                          <span className="text-xs text-[#A0AAB4] flex items-center gap-1.5">
+                            <span className="w-3 h-3 border-2 border-[#A0AAB4] border-t-transparent rounded-full animate-spin" />
+                            저장 중…
+                          </span>
+                        )}
+                        {status === "saved" && (
+                          <span className="text-xs text-[#0BB15A] font-semibold">✓ 저장됨</span>
+                        )}
+                        {!status && task.logDirty && (
+                          <button
+                            onClick={() => saveLog(task)}
+                            className="px-5 py-2 bg-[#3366FF] text-white rounded-xl text-sm font-medium hover:bg-[#2255EE] transition-colors"
+                          >
+                            저장
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
 
-                  {/* ── #2: 저장 상태 표시 ── */}
-                  <div className="flex justify-end items-center gap-3 pt-1 min-h-[32px]">
-                    {status === "saving" && (
-                      <span className="text-xs text-[#A0AAB4] flex items-center gap-1.5">
-                        <span className="w-3 h-3 border-2 border-[#A0AAB4] border-t-transparent rounded-full animate-spin" />
-                        저장 중…
-                      </span>
-                    )}
-                    {status === "saved" && (
-                      <span className="text-xs text-[#0BB15A] font-semibold">✓ 저장됨</span>
-                    )}
-                    {!status && task.logDirty && (
-                      <button
-                        onClick={() => saveLog(task)}
-                        className="px-5 py-2 bg-[#3366FF] text-white rounded-xl text-sm font-medium hover:bg-[#2255EE] transition-colors"
-                      >
-                        저장
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="px-5 pb-5">
-                  <TaskAttachments taskId={task.id} />
-                </div>
+                    <div className="px-5 pb-5">
+                      <TaskAttachments taskId={task.id} />
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}

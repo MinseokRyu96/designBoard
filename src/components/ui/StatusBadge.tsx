@@ -6,10 +6,14 @@ const styles: Record<TaskStatus, { bg: string; dot: string; text: string }> = {
   보류:   { bg: "bg-[#F4F6FA]", dot: "bg-[#A0AAB4]", text: "text-[#6B7685]" },
 };
 
-export default function StatusBadge({ status }: { status: TaskStatus }) {
+export default function StatusBadge({ status, onClick }: { status: TaskStatus; onClick?: () => void }) {
   const s = styles[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium print-status ${s.bg} ${s.text}`}>
+    <span
+      onClick={onClick}
+      title={onClick ? "클릭하여 상태 변경" : undefined}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium print-status ${s.bg} ${s.text} ${onClick ? "cursor-pointer hover:opacity-75 transition-opacity select-none" : ""}`}
+    >
       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.dot}`} />
       {status}
     </span>

@@ -235,7 +235,13 @@ export default function WeeklyPage() {
                           {log.task?.project && (
                             <span className="text-xs text-[#A0AAB4]">{log.task.project.name}</span>
                           )}
-                          <span className="font-semibold text-sm text-[#191F28]">{log.task?.title ?? "-"}</span>
+                          {/* #7: 제목 클릭 → 해당 날짜 Daily Log 이동 */}
+                          <Link
+                            href={`/daily?date=${log.log_date}`}
+                            className="font-semibold text-sm text-[#191F28] hover:text-[#3366FF] hover:underline transition-colors"
+                          >
+                            {log.task?.title ?? "-"}
+                          </Link>
                           {log.task && <StatusBadge status={log.task.status} />}
                         </div>
                         <div className="space-y-1">
