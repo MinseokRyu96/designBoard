@@ -81,27 +81,32 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
     fetchAttachments();
   }
 
+  // readOnly이고 첨부 없으면 아무것도 렌더링하지 않음
+  if (readOnly && attachments.length === 0) return null;
+
   return (
-    <div className="mt-1 pt-4 border-t border-[#EEF1F6]">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-[#A0AAB4] uppercase tracking-wide">첨부</span>
-        {!readOnly && mode === "idle" && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("link")}
-              className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
-            >
-              + 링크
-            </button>
-            <button
-              onClick={() => { setMode("image"); fileInputRef.current?.click(); }}
-              className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
-            >
-              + 이미지
-            </button>
-          </div>
-        )}
-      </div>
+    <div className={readOnly ? "mt-2" : "mt-1 pt-4 border-t border-[#EEF1F6]"}>
+      {!readOnly && (
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-semibold text-[#A0AAB4] uppercase tracking-wide">첨부</span>
+          {mode === "idle" && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMode("link")}
+                className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
+              >
+                + 링크
+              </button>
+              <button
+                onClick={() => { setMode("image"); fileInputRef.current?.click(); }}
+                className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
+              >
+                + 이미지
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {!readOnly && (
         <input
