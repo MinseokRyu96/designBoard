@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
+import Icon from "@/components/ui/Icon";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import Link from "next/link";
 
@@ -222,7 +223,7 @@ export default function WeeklyPage() {
                     href={`/daily?date=${dateStr}`}
                     className="text-xs text-[#3366FF] hover:underline font-medium"
                   >
-                    + 기록
+                    <Icon name="plus" size={12} className="inline mr-0.5" /> 기록
                   </Link>
                 </div>
                 {logs.length === 0 ? (
@@ -360,7 +361,7 @@ export default function WeeklyPage() {
               onClick={() => setShowForm(true)}
               className="mt-4 w-full py-3.5 border-2 border-dashed border-[#E2E8F0] rounded-2xl text-sm text-[#A0AAB4] hover:border-[#3366FF] hover:text-[#3366FF] transition-colors"
             >
-              + 차주 업무 추가
+              <Icon name="plus" size={16} className="inline mr-1" /> 차주 업무 추가
             </button>
           )}
         </div>

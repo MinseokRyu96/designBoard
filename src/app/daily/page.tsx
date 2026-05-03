@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
+import Icon from "@/components/ui/Icon";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import Link from "next/link";
 
@@ -345,7 +346,7 @@ function DailyContent() {
       {/* ── #1: 퀵 추가 카드 ── */}
       <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm mb-5 overflow-hidden">
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <span className="text-[#3366FF] font-bold text-base shrink-0 select-none">+</span>
+          <Icon name="plus" size={20} className="shrink-0 select-none" />
           <input
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}
@@ -493,17 +494,20 @@ function DailyContent() {
                         <StatusBadge status={task.status} onClick={() => updateStatus(task.id, task.status)} />
                         {task.due_date && <span className="text-xs text-[#A0AAB4]">~{task.due_date}</span>}
                         <button onClick={() => startEdit(task)}
-                          className="text-xs text-[#A0AAB4] hover:text-[#3366FF] border border-[#E2E8F0] rounded-lg px-2.5 py-1 transition-colors">
-                          수정
+                          title="수정"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-70 hover:opacity-100 transition-all">
+                          <Icon name="pencil" size={14} />
                         </button>
                         {/* #5: 태스크 복제 */}
                         <button onClick={() => duplicateTask(task)} disabled={creating}
-                          className="text-xs text-[#A0AAB4] hover:text-[#3366FF] border border-[#E2E8F0] rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40">
-                          복제
+                          title="복제"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-70 hover:opacity-100 transition-all disabled:opacity-30">
+                          <Icon name="copy" size={14} />
                         </button>
                         <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
-                          className="text-xs text-[#C0C8D4] hover:text-[#FF4E6A] transition-colors">
-                          {deleting === task.id ? "..." : "삭제"}
+                          title="삭제"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg opacity-40 hover:opacity-100 hover:bg-[#FFF5F7] transition-all">
+                          {deleting === task.id ? <span className="text-xs">…</span> : <Icon name="trash" size={14} />}
                         </button>
                         {/* #6: 접기/펼치기 */}
                         <button onClick={() => toggleCollapse(task.id)}
@@ -547,7 +551,9 @@ function DailyContent() {
                           </span>
                         )}
                         {status === "saved" && (
-                          <span className="text-xs text-[#0BB15A] font-semibold">✓ 저장됨</span>
+                          <span className="flex items-center gap-1 text-xs text-[#0BB15A] font-semibold">
+                            <Icon name="check" size={14} /> 저장됨
+                          </span>
                         )}
                         {!status && task.logDirty && (
                           <button

@@ -1,6 +1,6 @@
 # DesignBoard
 
-디자인팀(류민석·계은영·한다영) 업무 기록·계획·보고 통합 관리 웹앱.
+디자인팀 업무 기록·계획·보고 통합 관리 웹앱.
 
 **[design-board-omega.vercel.app](https://design-board-omega.vercel.app)**
 

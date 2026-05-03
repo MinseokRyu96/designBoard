@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import Icon from "@/components/ui/Icon";
 import type { ReportResponse, ReportMember, ReportNextWeekTask } from "@/types";
 
 function formatDate(date: string) {
@@ -92,7 +93,7 @@ function PrintContent() {
           disabled={!hasContent || loading}
           className="ml-auto px-6 py-2 bg-gray-900 text-white rounded font-medium text-sm hover:bg-gray-700 disabled:opacity-40 transition-colors"
         >
-          🖨️ 출력하기
+          <Icon name="printer" size={16} className="inline mr-1.5" /> 출력하기
         </button>
       </div>
 

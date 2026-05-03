@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import Icon from "@/components/ui/Icon";
 
 interface Attachment {
   id: string;
@@ -93,15 +94,15 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
             <div className="flex gap-2">
               <button
                 onClick={() => setMode("link")}
-                className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
+                className="flex items-center gap-1 text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
               >
-                + 링크
+                <Icon name="plus" size={14} /> 링크
               </button>
               <button
                 onClick={() => { setMode("image"); fileInputRef.current?.click(); }}
-                className="text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
+                className="flex items-center gap-1 text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
               >
-                + 이미지
+                <Icon name="camera" size={14} /> 이미지
               </button>
             </div>
           )}
@@ -163,8 +164,8 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
 
       {!readOnly && uploadError && (
         <div className="text-xs text-[#FF4E6A] py-1.5 flex items-center justify-between gap-2 bg-[#FFF5F7] px-3 rounded-lg border border-[#FFD6DD]">
-          <span>⚠ {uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="text-[#C0C8D4] hover:text-[#6B7685] shrink-0">✕</button>
+          <span className="flex items-center gap-1.5"><Icon name="warning" size={14} /> {uploadError}</span>
+          <button onClick={() => setUploadError(null)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity"><Icon name="cancel" size={16} /></button>
         </div>
       )}
 
@@ -174,7 +175,7 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
             <div key={att.id} className="flex items-center gap-2 group p-2 rounded-lg hover:bg-[#F9FAFB] transition-colors">
               {att.type === "link" ? (
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="w-6 h-6 rounded-lg bg-[#EEF3FF] flex items-center justify-center text-[#3366FF] text-[10px] shrink-0">🔗</span>
+                  <span className="w-6 h-6 rounded-lg bg-[#EEF3FF] flex items-center justify-center shrink-0"><Icon name="link" size={14} /></span>
                   <a
                     href={att.url}
                     target="_blank"
@@ -204,7 +205,7 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
                   disabled={deleting === att.id}
                   className="shrink-0 text-xs text-[#C0C8D4] hover:text-[#FF4E6A] opacity-0 group-hover:opacity-100 transition-all"
                 >
-                  {deleting === att.id ? "..." : "✕"}
+                  {deleting === att.id ? <span className="text-xs">...</span> : <Icon name="cancel" size={14} />}
                 </button>
               )}
             </div>
