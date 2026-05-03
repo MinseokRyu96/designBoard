@@ -2,7 +2,7 @@
 
 디자인팀 업무 기록·계획·보고 통합 관리 웹앱.
 
-**[design-board-omega.vercel.app](https://design-board-omega.vercel.app)**
+**[ktpdesignboard.vercel.app](https://ktpdesignboard.vercel.app)**
 
 ---
 
