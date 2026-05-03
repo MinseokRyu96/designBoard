@@ -147,13 +147,84 @@ export default function DashboardPage() {
   const firstDow = getFirstDow(year, month);
   const todayStr = toDateStr(today);
 
-  const dateStreakMap = new Map<string, { streak: TaskStreak; col: number }[]>();
-  for (let i = 0; i < daysInMonth; i++) {
-    const day = i + 1;
-    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const col = (firstDow + i) % 7;
-    const matches = streaks.filter(s => s.dates.includes(dateStr));
-    if (matches.length > 0) dateStreakMap.set(dateStr, matches.map(s => ({ streak: s, col })));
+  // 주(week) 단위로 슬롯을 고정 배정 → 같은 태스크가 여러 날에 걸쳐 동일한 행(row)에 표시됨
+  const MAX_CHIP_ROWS = 3;
+  const chipSlotMap = new Map<string, (TaskStreak | null)[]>(); // date → 슬롯 배열
+  const chipOverflowMap = new Map<string, number>();            // date → 넘친 칩 수
+
+  const numWeeks = Math.ceil((firstDow + daysInMonth) / 7);
+
+  for (let weekRow = 0; weekRow < numWeeks; weekRow++) {
+    // 이번 주 7칸의 날짜 (빈 셀 = null)
+    const weekDates: (string | null)[] = [];
+    for (let col = 0; col < 7; col++) {
+      const dayIdx = weekRow * 7 + col - firstDow;
+      if (dayIdx < 0 || dayIdx >= daysInMonth) {
+        weekDates.push(null);
+      } else {
+        const d = dayIdx + 1;
+        weekDates.push(`${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+      }
+    }
+
+    // 이번 주에 등장하는 태스크와 주 내 열 범위 수집
+    const weekTaskMap = new Map<string, { streak: TaskStreak; startCol: number; endCol: number }>();
+    for (let col = 0; col < 7; col++) {
+      const date = weekDates[col];
+      if (!date) continue;
+      for (const streak of streaks) {
+        if (!streak.dates.includes(date) || weekTaskMap.has(streak.taskId)) continue;
+        let startCol = col, endCol = col;
+        for (let c = 0; c < 7; c++) {
+          const d = weekDates[c];
+          if (d && streak.dates.includes(d)) {
+            if (c < startCol) startCol = c;
+            if (c > endCol) endCol = c;
+          }
+        }
+        weekTaskMap.set(streak.taskId, { streak, startCol, endCol });
+      }
+    }
+
+    // 시작 열 순으로 정렬 후 슬롯 배정 (그리디: 가장 낮은 빈 슬롯)
+    const weekTasks = Array.from(weekTaskMap.values())
+      .sort((a, b) => a.startCol - b.startCol || a.streak.taskId.localeCompare(b.streak.taskId));
+
+    const slotOccupancy: { startCol: number; endCol: number }[][] = [];
+    const taskSlot = new Map<string, number>();
+
+    for (const task of weekTasks) {
+      let slot = 0;
+      while (true) {
+        const conflict = (slotOccupancy[slot] ?? []).some(
+          o => !(o.endCol < task.startCol || o.startCol > task.endCol)
+        );
+        if (!conflict) break;
+        slot++;
+      }
+      if (!slotOccupancy[slot]) slotOccupancy[slot] = [];
+      slotOccupancy[slot].push({ startCol: task.startCol, endCol: task.endCol });
+      taskSlot.set(task.streak.taskId, slot);
+    }
+
+    const numSlots = Math.min(slotOccupancy.length, MAX_CHIP_ROWS);
+
+    // 날짜별 슬롯 배열 & 오버플로우 수 저장
+    for (let col = 0; col < 7; col++) {
+      const date = weekDates[col];
+      if (!date) continue;
+
+      const slots: (TaskStreak | null)[] = Array(numSlots).fill(null);
+      let overflow = 0;
+      for (const [taskId, slot] of taskSlot.entries()) {
+        const task = weekTaskMap.get(taskId);
+        if (!task || !task.streak.dates.includes(date)) continue;
+        if (slot < MAX_CHIP_ROWS) slots[slot] = task.streak;
+        else overflow++;
+      }
+      chipSlotMap.set(date, slots);
+      if (overflow > 0) chipOverflowMap.set(date, overflow);
+    }
   }
 
   function prevMonth() {
@@ -237,7 +308,9 @@ export default function DashboardPage() {
             const col = (firstDow + i) % 7;
             const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const dots = memberDots.get(dateStr) ?? [];
-            const dayStreaks = dateStreakMap.get(dateStr) ?? [];
+            const dateSlots = chipSlotMap.get(dateStr) ?? [];
+            const hasAnyChip = dateSlots.some(s => s !== null);
+            const overflow = chipOverflowMap.get(dateStr) ?? 0;
             const isToday = dateStr === todayStr;
             const isSat = col === 5;
             const isSun = col === 6;
@@ -262,7 +335,7 @@ export default function DashboardPage() {
                     {day}
                   </span>
 
-                  {dots.length > 0 && dayStreaks.length === 0 && (
+                  {dots.length > 0 && !hasAnyChip && (
                     <div className="flex gap-0.5 justify-center mt-1.5">
                       {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
                         <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
@@ -271,11 +344,15 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* 칩 — 수평 패딩 없이 셀 엣지까지 확장해 인접 칩과 시각적으로 이어짐 */}
-                {dayStreaks.length > 0 && (
+                {/* 칩 — 슬롯 고정 배치로 같은 태스크가 동일한 행에 표시됨 */}
+                {dateSlots.length > 0 && (
                   <div className="mt-0.5 space-y-0.5 pb-1.5">
-                    {dayStreaks.slice(0, 3).map(({ streak, col: c }) => {
-                      const pos = getChipPos(streak.dates, dateStr, c);
+                    {dateSlots.map((streak, slotIdx) => {
+                      if (!streak) {
+                        // 빈 슬롯 — 아래 칩 정렬을 위한 spacer
+                        return <div key={`empty-${slotIdx}`} className="h-4" />;
+                      }
+                      const pos = getChipPos(streak.dates, dateStr, col);
                       const colors = MEMBER_COLORS[streak.memberName];
                       return (
                         <div
@@ -291,8 +368,8 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
-                    {dayStreaks.length > 3 && (
-                      <span className="text-[9px] text-[#A0AAB4] px-1.5">+{dayStreaks.length - 3}</span>
+                    {overflow > 0 && (
+                      <span className="text-[9px] text-[#A0AAB4] px-1.5">+{overflow}</span>
                     )}
                   </div>
                 )}
