@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export async function GET(request: NextRequest) {
@@ -10,8 +9,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "task_id가 필요합니다." }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const serviceClient = createServiceClient();
+  const { data, error } = await serviceClient
     .from("task_attachments")
     .select("id, task_id, type, url, name, created_at")
     .eq("task_id", taskId)
@@ -54,8 +53,7 @@ export async function POST(request: NextRequest) {
       .from("attachments")
       .getPublicUrl(filePath);
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data, error } = await serviceClient
       .from("task_attachments")
       .insert({ task_id: taskId, type: "image", url: publicData.publicUrl, name: name ?? file.name })
       .select()
@@ -73,8 +71,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "task_id와 url이 필요합니다." }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const serviceClient = createServiceClient();
+  const { data, error } = await serviceClient
     .from("task_attachments")
     .insert({ task_id, type: "link", url, name: name ?? url })
     .select()
@@ -92,24 +90,23 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const { data: attachment } = await supabase
+  const serviceClient = createServiceClient();
+  const { data: attachment } = await serviceClient
     .from("task_attachments")
     .select("type, url")
     .eq("id", id)
     .single();
 
-  // 이미지면 Storage에서도 삭제 — service role 사용
+  // 이미지면 Storage에서도 삭제
   if (attachment?.type === "image") {
     const url = new URL(attachment.url);
     const pathMatch = url.pathname.match(/\/storage\/v1\/object\/public\/attachments\/(.+)/);
     if (pathMatch) {
-      const serviceClient = createServiceClient();
       await serviceClient.storage.from("attachments").remove([pathMatch[1]]);
     }
   }
 
-  const { error } = await supabase.from("task_attachments").delete().eq("id", id);
+  const { error } = await serviceClient.from("task_attachments").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
