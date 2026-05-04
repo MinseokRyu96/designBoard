@@ -251,7 +251,6 @@ export default function WeeklyPage() {
                         >
                           {log.task?.title ?? "-"}
                         </button>
-                        {log.task && <StatusBadge status={log.task.status} />}
                       </div>
                       <div className="space-y-1.5 pl-0.5">
                         {log.progress && (
