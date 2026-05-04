@@ -8,7 +8,13 @@ import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
 import Tooltip from "@/components/ui/Tooltip";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
+import { KOREAN_HOLIDAYS } from "@/lib/holidays";
 import Link from "next/link";
+
+function isNonWorkday(dateStr: string): boolean {
+  const day = new Date(dateStr + "T00:00:00").getDay();
+  return day === 0 || day === 6 || !!KOREAN_HOLIDAYS[dateStr];
+}
 
 const MEMBER_IDS: Record<MemberName, string> = {
   류민석: "11111111-1111-1111-1111-111111111111",
@@ -345,36 +351,48 @@ function DailyContent() {
       </div>
 
       {/* ── #1: 퀵 추가 카드 ── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm mb-5 overflow-hidden">
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <Icon name="plus" size={20} className="shrink-0 select-none" />
-          <input
-            value={quickTitle}
-            onChange={(e) => setQuickTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && quickCreate()}
-            placeholder="업무명 입력 후 Enter…"
-            className="flex-1 text-sm text-[#191F28] placeholder:text-[#C0C8D4] focus:outline-none bg-transparent"
-          />
-          <button
-            onClick={() => setShowDetail(v => !v)}
-            className={`text-xs px-2.5 py-1 rounded-lg border transition-colors shrink-0 ${
-              showDetail
-                ? "border-[#3366FF] text-[#3366FF] bg-[#EEF3FF]"
-                : "border-[#E2E8F0] text-[#A0AAB4] hover:border-[#C0C8D4] hover:text-[#6B7685]"
-            }`}
-          >
-            상세 {showDetail ? "▴" : "▾"}
-          </button>
-          {quickTitle.trim() && (
-            <button
-              onClick={quickCreate}
-              disabled={creating}
-              className="text-xs px-3 py-1.5 bg-[#3366FF] text-white rounded-lg font-medium hover:bg-[#2255EE] disabled:opacity-50 transition-colors shrink-0"
-            >
-              {creating ? "추가 중…" : "추가"}
-            </button>
-          )}
-        </div>
+      {(() => {
+        const isOff = isNonWorkday(date);
+        const offLabel = KOREAN_HOLIDAYS[date] ?? (new Date(date + "T00:00:00").getDay() === 0 ? "일요일" : "토요일");
+        return (
+          <>
+            {isOff && (
+              <div className="flex items-center gap-2 mb-3 px-4 py-2.5 bg-[#FFF5F7] border border-[#FFD6DE] rounded-xl text-xs text-[#FF4E6A] font-medium">
+                <Icon name="warning" size={14} />
+                {offLabel} — 휴무일에는 업무 입력이 제한됩니다.
+              </div>
+            )}
+            <div className={`bg-white border border-[#E2E8F0] rounded-2xl shadow-sm mb-5 overflow-hidden ${isOff ? "opacity-50 pointer-events-none select-none" : ""}`}>
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <Icon name="plus" size={20} className="shrink-0 select-none" />
+                <input
+                  value={quickTitle}
+                  onChange={(e) => setQuickTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && quickCreate()}
+                  placeholder="업무명 입력 후 Enter…"
+                  className="flex-1 text-sm text-[#191F28] placeholder:text-[#C0C8D4] focus:outline-none bg-transparent"
+                  disabled={isOff}
+                />
+                <button
+                  onClick={() => setShowDetail(v => !v)}
+                  className={`text-xs px-2.5 py-1 rounded-lg border transition-colors shrink-0 ${
+                    showDetail
+                      ? "border-[#3366FF] text-[#3366FF] bg-[#EEF3FF]"
+                      : "border-[#E2E8F0] text-[#A0AAB4] hover:border-[#C0C8D4] hover:text-[#6B7685]"
+                  }`}
+                >
+                  상세 {showDetail ? "▴" : "▾"}
+                </button>
+                {quickTitle.trim() && (
+                  <button
+                    onClick={quickCreate}
+                    disabled={creating}
+                    className="text-xs px-3 py-1.5 bg-[#3366FF] text-white rounded-lg font-medium hover:bg-[#2255EE] disabled:opacity-50 transition-colors shrink-0"
+                  >
+                    {creating ? "추가 중…" : "추가"}
+                  </button>
+                )}
+              </div>
 
         {/* 상세 옵션 (접기/펼치기) */}
         {showDetail && (
@@ -423,6 +441,9 @@ function DailyContent() {
           </div>
         )}
       </div>
+          </>
+        );
+      })()}
 
       {/* ── 업무 카드 목록 ── */}
       {loading ? (

@@ -221,12 +221,14 @@ export default function WeeklyPage() {
                   }`}>
                     {dayLabel}{holiday && ` · ${holiday}`}
                   </span>
-                  <Link
-                    href={`/daily?date=${dateStr}`}
-                    className="text-xs text-[#3366FF] hover:underline font-medium"
-                  >
-                    <Icon name="plus" size={12} className="inline mr-0.5" /> 기록
-                  </Link>
+                  {!isSun && !isSat && !holiday && (
+                    <Link
+                      href={`/daily?date=${dateStr}`}
+                      className="text-xs text-[#3366FF] hover:underline font-medium"
+                    >
+                      <Icon name="plus" size={12} className="inline mr-0.5" /> 기록
+                    </Link>
+                  )}
                 </div>
                 {logs.length === 0 ? (
                   <div className="px-4 py-3 text-xs text-[#C0C8D4]">기록 없음</div>
