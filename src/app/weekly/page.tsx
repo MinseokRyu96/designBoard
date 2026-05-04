@@ -216,10 +216,10 @@ export default function WeeklyPage() {
                 <div className={`flex items-center justify-between px-4 py-3 border-b border-[#EEF1F6] ${
                   isSat ? "bg-[#F0F5FF]" : isRed ? "bg-[#FFF5F7]" : "bg-[#F9FAFB]"
                 }`}>
-                  <span className={`text-xs font-bold tracking-wide ${
+                  <span className={`text-sm font-bold tracking-wide ${
                     isSat ? "text-[#3366FF]" : isRed ? "text-[#FF4E6A]" : "text-[#6B7685]"
                   }`}>
-                    {dayLabel}{holiday && ` · ${holiday}`}
+                    {dayLabel}{holiday && <span className="font-medium ml-1.5 opacity-75">· {holiday}</span>}
                   </span>
                   {!isSun && !isSat && !holiday && (
                     <Link
@@ -231,52 +231,85 @@ export default function WeeklyPage() {
                   )}
                 </div>
                 {logs.length === 0 ? (
-                  <div className="px-4 py-3 text-xs text-[#C0C8D4]">기록 없음</div>
-                ) : (
-                  <div className="divide-y divide-[#EEF1F6]">
-                    {logs.map((log) => (
-                      <div key={log.id} className="px-4 py-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          {log.task?.project && (
-                            <span className="text-xs text-[#A0AAB4]">{log.task.project.name}</span>
-                          )}
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            className="font-semibold text-sm text-[#191F28] hover:text-[#3366FF] transition-colors text-left"
-                          >
-                            {log.task?.title ?? "-"}
-                          </button>
-                          {log.task && <StatusBadge status={log.task.status} />}
-                        </div>
-                        <div className="space-y-1">
-                          {log.progress && (
-                            <p className="text-xs text-[#6B7685]">
-                              <span className="font-semibold text-[#A0AAB4] mr-1.5">진행</span>{log.progress}
-                            </p>
-                          )}
-                          {log.issue && (
-                            <p className="text-xs text-[#6B7685]">
-                              <span className="font-semibold text-[#A0AAB4] mr-1.5">이슈</span>{log.issue}
-                            </p>
-                          )}
-                          {log.next_action && (
-                            <p className="text-xs text-[#6B7685]">
-                              <span className="font-semibold text-[#A0AAB4] mr-1.5">다음</span>{log.next_action}
-                            </p>
-                          )}
-                          {log.insight && (
-                            <p className="text-xs text-[#3366FF]">
-                              <span className="font-semibold text-[#A0AAB4] mr-1.5">인사이트</span>{log.insight}
-                            </p>
-                          )}
-                        </div>
-                        {log.task && (
-                          <TaskAttachments taskId={log.task.id} readOnly />
+                  <div className="px-5 py-4 text-sm text-[#C0C8D4]">기록 없음</div>
+                ) : (() => {
+                  const inProgress = logs.filter(l => l.task?.status !== "완료");
+                  const done = logs.filter(l => l.task?.status === "완료");
+                  const hasBoth = inProgress.length > 0 && done.length > 0;
+
+                  const renderLog = (log: DailyLogEntry, isDone: boolean) => (
+                    <div key={log.id} className={`px-5 py-4 ${isDone ? "opacity-60" : ""}`}>
+                      <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                        {log.task?.project && (
+                          <span className="text-xs font-medium text-[#A0AAB4] bg-[#F4F6FA] px-2 py-0.5 rounded-md">
+                            {log.task.project.name}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => setSelectedLog(log)}
+                          className="font-semibold text-base text-[#191F28] hover:text-[#3366FF] transition-colors text-left"
+                        >
+                          {log.task?.title ?? "-"}
+                        </button>
+                        {log.task && <StatusBadge status={log.task.status} />}
+                      </div>
+                      <div className="space-y-1.5 pl-0.5">
+                        {log.progress && (
+                          <p className="text-sm text-[#6B7685] leading-snug">
+                            <span className="inline-block text-xs font-bold text-[#B0BAC8] mr-2 w-8">진행</span>{log.progress}
+                          </p>
+                        )}
+                        {log.issue && (
+                          <p className="text-sm text-[#6B7685] leading-snug">
+                            <span className="inline-block text-xs font-bold text-[#B0BAC8] mr-2 w-8">이슈</span>{log.issue}
+                          </p>
+                        )}
+                        {log.next_action && (
+                          <p className="text-sm text-[#6B7685] leading-snug">
+                            <span className="inline-block text-xs font-bold text-[#B0BAC8] mr-2 w-8">다음</span>{log.next_action}
+                          </p>
+                        )}
+                        {log.insight && (
+                          <p className="text-sm text-[#3366FF] leading-snug">
+                            <span className="inline-block text-xs font-bold text-[#B0BAC8] mr-2 w-8">인사</span>{log.insight}
+                          </p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {log.task && <TaskAttachments taskId={log.task.id} readOnly />}
+                    </div>
+                  );
+
+                  return (
+                    <div>
+                      {inProgress.length > 0 && (
+                        <div>
+                          {hasBoth && (
+                            <div className="flex items-center gap-2 px-5 pt-3 pb-1">
+                              <span className="text-[11px] font-bold text-[#3366FF] tracking-wide uppercase">진행 중</span>
+                              <div className="flex-1 h-px bg-[#EEF3FF]" />
+                            </div>
+                          )}
+                          <div className="divide-y divide-[#EEF1F6]">
+                            {inProgress.map(log => renderLog(log, false))}
+                          </div>
+                        </div>
+                      )}
+                      {done.length > 0 && (
+                        <div className={hasBoth ? "border-t border-[#EEF1F6]" : ""}>
+                          {hasBoth && (
+                            <div className="flex items-center gap-2 px-5 pt-3 pb-1">
+                              <span className="text-[11px] font-bold text-[#A0AAB4] tracking-wide uppercase">완료</span>
+                              <div className="flex-1 h-px bg-[#EEF1F6]" />
+                            </div>
+                          )}
+                          <div className="divide-y divide-[#EEF1F6]">
+                            {done.map(log => renderLog(log, true))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}
