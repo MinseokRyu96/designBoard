@@ -238,7 +238,7 @@ export default function WeeklyPage() {
                   const hasBoth = inProgress.length > 0 && done.length > 0;
 
                   const renderLog = (log: DailyLogEntry, isDone: boolean) => (
-                    <div key={log.id} className={`px-5 py-4 ${isDone ? "opacity-60" : ""}`}>
+                    <div key={log.id} className="px-5 py-4">
                       <div className="flex items-center gap-2 mb-2.5 flex-wrap">
                         {log.task?.project && (
                           <span className="text-xs font-medium text-[#A0AAB4] bg-[#F4F6FA] px-2 py-0.5 rounded-md">
