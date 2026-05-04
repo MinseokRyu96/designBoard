@@ -6,6 +6,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
+import { KOREAN_HOLIDAYS } from "@/lib/holidays";
 import Link from "next/link";
 
 const MEMBER_IDS: Record<MemberName, string> = {
@@ -205,18 +206,20 @@ export default function WeeklyPage() {
         <div className="space-y-3">
           {Array.from(logsByDay.entries()).map(([dateStr, logs], i) => {
             const d = new Date(dateStr + "T00:00:00");
+            const holiday = KOREAN_HOLIDAYS[dateStr];
             const dayLabel = `${WEEKDAY_LABELS[i]} ${d.getMonth() + 1}/${d.getDate()}`;
             const isSun = i === 0;
             const isSat = i === 6;
+            const isRed = isSun || !!holiday;
             return (
               <div key={dateStr} className="bg-white border border-[#E2E8F0] rounded-2xl overflow-hidden shadow-sm">
                 <div className={`flex items-center justify-between px-4 py-3 border-b border-[#EEF1F6] ${
-                  isSat ? "bg-[#F0F5FF]" : isSun ? "bg-[#FFF5F7]" : "bg-[#F9FAFB]"
+                  isSat ? "bg-[#F0F5FF]" : isRed ? "bg-[#FFF5F7]" : "bg-[#F9FAFB]"
                 }`}>
                   <span className={`text-xs font-bold tracking-wide ${
-                    isSat ? "text-[#3366FF]" : isSun ? "text-[#FF4E6A]" : "text-[#6B7685]"
+                    isSat ? "text-[#3366FF]" : isRed ? "text-[#FF4E6A]" : "text-[#6B7685]"
                   }`}>
-                    {dayLabel}
+                    {dayLabel}{holiday && ` · ${holiday}`}
                   </span>
                   <Link
                     href={`/daily?date=${dateStr}`}

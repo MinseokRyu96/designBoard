@@ -351,7 +351,7 @@ function DailyContent() {
           <input
             value={quickTitle}
             onChange={(e) => setQuickTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && quickCreate()}
+            onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && quickCreate()}
             placeholder="업무명 입력 후 Enter…"
             className="flex-1 text-sm text-[#191F28] placeholder:text-[#C0C8D4] focus:outline-none bg-transparent"
           />
