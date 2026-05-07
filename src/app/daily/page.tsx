@@ -435,7 +435,10 @@ function DailyContent() {
                   type="date"
                   min={date}
                   value={detailForm.due_date}
-                  onChange={(e) => setDetailForm(f => ({ ...f, due_date: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setDetailForm(f => ({ ...f, due_date: val && val < date ? date : val }));
+                  }}
                   className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3366FF]"
                 />
               </div>
@@ -495,7 +498,11 @@ function DailyContent() {
                         <label className="block text-xs font-semibold text-[#A0AAB4] mb-1.5 uppercase tracking-wide">완료 예정일</label>
                         <input type="date" value={editForm.due_date}
                           min={task.start_date ?? undefined}
-                          onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const min = task.start_date ?? "";
+                            setEditForm({ ...editForm, due_date: (min && val && val < min) ? min : val });
+                          }}
                           className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3366FF]" />
                       </div>
                       <div className="flex gap-2 justify-end pt-1">

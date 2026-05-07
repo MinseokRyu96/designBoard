@@ -375,7 +375,11 @@ export default function WeeklyPage() {
                       type="date"
                       min={newTask.start_date || undefined}
                       value={newTask.due_date}
-                      onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const min = newTask.start_date;
+                        setNewTask({ ...newTask, due_date: (min && val && val < min) ? min : val });
+                      }}
                       className="w-full border border-[#E2E8F0] rounded-xl px-3 py-2.5 text-sm text-[#191F28] focus:outline-none focus:ring-2 focus:ring-[#3366FF]"
                     />
                   </div>

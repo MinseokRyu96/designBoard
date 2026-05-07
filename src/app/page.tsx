@@ -100,6 +100,7 @@ export default function DashboardPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [streaks, setStreaks] = useState<TaskStreak[]>([]);
   const [memberDots, setMemberDots] = useState<Map<string, MemberName[]>>(new Map());
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const daysInMonth = getDaysInMonth(year, month);
@@ -149,9 +150,8 @@ export default function DashboardPage() {
   const todayStr = toDateStr(today);
 
   // 주(week) 단위로 슬롯을 고정 배정 → 같은 태스크가 여러 날에 걸쳐 동일한 행(row)에 표시됨
-  const MAX_CHIP_ROWS = 6;
-  const chipSlotMap = new Map<string, (TaskStreak | null)[]>(); // date → 슬롯 배열
-  const chipOverflowMap = new Map<string, number>();            // date → 넘친 칩 수
+  const MAX_CHIP_ROWS = 6; // 기본 표시 한도 (펼치기 전)
+  const chipSlotMap = new Map<string, (TaskStreak | null)[]>(); // date → 전체 슬롯 배열
 
   const numWeeks = Math.ceil((firstDow + daysInMonth) / 7);
 
@@ -208,31 +208,30 @@ export default function DashboardPage() {
       taskSlot.set(task.streak.taskId, slot);
     }
 
-    const numSlots = Math.min(slotOccupancy.length, MAX_CHIP_ROWS);
+    const totalSlots = slotOccupancy.length;
 
-    // 날짜별 슬롯 배열 & 오버플로우 수 저장
+    // 날짜별 슬롯 배열 전체 저장 (표시 한도는 렌더링 시 적용)
     for (let col = 0; col < 7; col++) {
       const date = weekDates[col];
       if (!date) continue;
 
-      const slots: (TaskStreak | null)[] = Array(numSlots).fill(null);
-      let overflow = 0;
+      const slots: (TaskStreak | null)[] = Array(totalSlots).fill(null);
       for (const [taskId, slot] of taskSlot.entries()) {
         const task = weekTaskMap.get(taskId);
         if (!task || !task.streak.dates.includes(date)) continue;
-        if (slot < MAX_CHIP_ROWS) slots[slot] = task.streak;
-        else overflow++;
+        slots[slot] = task.streak;
       }
       chipSlotMap.set(date, slots);
-      if (overflow > 0) chipOverflowMap.set(date, overflow);
     }
   }
 
   function prevMonth() {
+    setExpandedDates(new Set());
     if (month === 0) { setYear(y => y - 1); setMonth(11); }
     else setMonth(m => m - 1);
   }
   function nextMonth() {
+    setExpandedDates(new Set());
     if (month === 11) { setYear(y => y + 1); setMonth(0); }
     else setMonth(m => m + 1);
   }
@@ -309,9 +308,11 @@ export default function DashboardPage() {
             const col = (firstDow + i) % 7;
             const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const dots = memberDots.get(dateStr) ?? [];
-            const dateSlots = chipSlotMap.get(dateStr) ?? [];
-            const hasAnyChip = dateSlots.some(s => s !== null);
-            const overflow = chipOverflowMap.get(dateStr) ?? 0;
+            const allSlots = chipSlotMap.get(dateStr) ?? [];
+            const isExpanded = expandedDates.has(dateStr);
+            const dateSlots = isExpanded ? allSlots : allSlots.slice(0, MAX_CHIP_ROWS);
+            const hiddenCount = isExpanded ? 0 : allSlots.slice(MAX_CHIP_ROWS).filter(s => s !== null).length;
+            const hasAnyChip = allSlots.some(s => s !== null);
             const isToday = dateStr === todayStr;
             const isSat = col === 6;
             const isSun = col === 0;
@@ -376,8 +377,21 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
-                    {overflow > 0 && (
-                      <span className="text-[9px] text-[#A0AAB4] px-1.5">+{overflow}</span>
+                    {hiddenCount > 0 && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setExpandedDates(prev => new Set([...prev, dateStr])); }}
+                        className="text-[9px] text-[#A0AAB4] hover:text-[#3366FF] px-1.5 font-semibold transition-colors"
+                      >
+                        +{hiddenCount}
+                      </button>
+                    )}
+                    {isExpanded && allSlots.length > MAX_CHIP_ROWS && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setExpandedDates(prev => { const n = new Set(prev); n.delete(dateStr); return n; }); }}
+                        className="text-[9px] text-[#A0AAB4] hover:text-[#3366FF] px-1.5 font-semibold transition-colors"
+                      >
+                        ▴ 접기
+                      </button>
                     )}
                   </div>
                 )}
