@@ -90,7 +90,7 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
       {!readOnly && (
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-[#A0AAB4] uppercase tracking-wide">첨부</span>
-          {mode === "idle" && (
+          {mode !== "link" && (
             <div className="flex gap-2">
               <button
                 onClick={() => setMode("link")}
@@ -100,7 +100,8 @@ export default function TaskAttachments({ taskId, readOnly = false }: TaskAttach
               </button>
               <button
                 onClick={() => { setMode("image"); fileInputRef.current?.click(); }}
-                className="flex items-center gap-1 text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors"
+                disabled={uploading}
+                className="flex items-center gap-1 text-xs text-[#3366FF] hover:text-[#2255EE] font-medium transition-colors disabled:opacity-40"
               >
                 <Icon name="camera" size={14} /> 이미지
               </button>

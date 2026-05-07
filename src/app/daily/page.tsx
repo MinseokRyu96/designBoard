@@ -316,7 +316,8 @@ function DailyContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task_id: task.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
         });
-        setFocusNewTaskId(task.id);
+        // 새 업무는 닫힌 채로 추가
+        setCollapsedTasks(prev => new Set([...prev, task.id]));
       }
       await fetchData();
     } finally {
