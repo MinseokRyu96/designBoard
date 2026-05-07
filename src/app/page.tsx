@@ -189,7 +189,11 @@ export default function DashboardPage() {
 
     // 시작 열 순으로 정렬 후 슬롯 배정 (그리디: 가장 낮은 빈 슬롯)
     const weekTasks = Array.from(weekTaskMap.values())
-      .sort((a, b) => a.startCol - b.startCol || a.streak.taskId.localeCompare(b.streak.taskId));
+      .sort((a, b) => {
+        const mi = MEMBER_ORDER.indexOf(a.streak.memberName) - MEMBER_ORDER.indexOf(b.streak.memberName);
+        if (mi !== 0) return mi;
+        return a.startCol - b.startCol || a.streak.taskId.localeCompare(b.streak.taskId);
+      });
 
     const slotOccupancy: { startCol: number; endCol: number }[][] = [];
     const taskSlot = new Map<string, number>();
