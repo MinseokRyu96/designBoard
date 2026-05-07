@@ -52,13 +52,14 @@ Bash(npm run type-check*)
 Bash(npx tsc*)
 ```
 
-### Git (로컬)
+### Git
 
 ```
-# 로컬 git 작업 — 허용
+# git 작업 — 허용 (push 포함)
 Bash(git init)
 Bash(git add*)
 Bash(git commit*)
+Bash(git push*)
 Bash(git status)
 Bash(git log*)
 Bash(git diff*)
@@ -82,8 +83,7 @@ Bash(supabase stop)
 ## 금지 사항 (반드시 확인 후 진행)
 
 ```
-# 원격 배포 및 push — 사용자 확인 필요
-Bash(git push*)
+# 원격 배포 — 사용자 확인 필요
 Bash(vercel deploy*)
 Bash(supabase db push*)
 
