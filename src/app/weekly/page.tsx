@@ -252,32 +252,26 @@ export default function WeeklyPage() {
                           {log.task?.title ?? "-"}
                         </button>
                       </div>
-                      <div className="space-y-1.5 pl-0.5">
-                        {log.progress && (
-                          <div className="flex gap-2">
-                            <span className="shrink-0 text-xs font-bold text-[#B0BAC8] w-8 pt-px">진행</span>
+                      {(log.progress || log.issue || log.next_action || log.insight) && (
+                        <div className="grid grid-cols-[2.5rem_1fr] gap-x-2 gap-y-1.5 items-start">
+                          {log.progress && <>
+                            <span className="text-xs font-bold text-[#B0BAC8] pt-0.5">진행</span>
                             <p className="text-sm text-[#6B7685] leading-relaxed whitespace-pre-wrap">{log.progress}</p>
-                          </div>
-                        )}
-                        {log.issue && (
-                          <div className="flex gap-2">
-                            <span className="shrink-0 text-xs font-bold text-[#B0BAC8] w-8 pt-px">이슈</span>
+                          </>}
+                          {log.issue && <>
+                            <span className="text-xs font-bold text-[#B0BAC8] pt-0.5">이슈</span>
                             <p className="text-sm text-[#6B7685] leading-relaxed whitespace-pre-wrap">{log.issue}</p>
-                          </div>
-                        )}
-                        {log.next_action && (
-                          <div className="flex gap-2">
-                            <span className="shrink-0 text-xs font-bold text-[#B0BAC8] w-8 pt-px">다음</span>
+                          </>}
+                          {log.next_action && <>
+                            <span className="text-xs font-bold text-[#B0BAC8] pt-0.5">다음</span>
                             <p className="text-sm text-[#6B7685] leading-relaxed whitespace-pre-wrap">{log.next_action}</p>
-                          </div>
-                        )}
-                        {log.insight && (
-                          <div className="flex gap-2">
-                            <span className="shrink-0 text-xs font-bold text-[#B0BAC8] w-8 pt-px">인사</span>
+                          </>}
+                          {log.insight && <>
+                            <span className="text-xs font-bold text-[#B0BAC8] pt-0.5">인사</span>
                             <p className="text-sm text-[#3366FF] leading-relaxed whitespace-pre-wrap">{log.insight}</p>
-                          </div>
-                        )}
-                      </div>
+                          </>}
+                        </div>
+                      )}
                       {log.task && <TaskAttachments taskId={log.task.id} readOnly />}
                     </div>
                   );
