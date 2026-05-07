@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
 
   if (memberId) query = query.eq("member_id", memberId);
   if (date) {
-    // due_date 있는 태스크: 해당 날짜에 활성 (start_date <= date AND due_date >= date)
-    // due_date 없는 태스크: start_date 당일만
-    query = query.lte("start_date", date).or(`due_date.gte.${date},and(due_date.is.null,start_date.eq.${date})`);
+    // start_date = date 이면 due_date 값과 무관하게 항상 표시 (당일 생성 태스크 보장)
+    // start_date < date 이면 due_date >= date 인 경우만 (진행 중인 기간 업무)
+    query = query.lte("start_date", date).or(`start_date.eq.${date},due_date.gte.${date}`);
   } else if (from && to) {
     // due_date 있는 태스크: 기간과 겹치는 경우
     // due_date 없는 태스크: start_date가 해당 월 범위 내인 경우만
