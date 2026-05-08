@@ -22,27 +22,35 @@ interface UserProfile {
 export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  // undefined = 로딩 중, null = 비로그인, UserProfile = 로그인됨
+  const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined);
 
   useEffect(() => {
     const supabase = createClient();
 
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setProfile(null); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setProfile(null); return; }
 
       const { data } = await supabase
         .from("profiles")
         .select("name, username, is_admin")
-        .eq("id", user.id)
+        .eq("id", session.user.id)
         .single();
-      if (data) setProfile(data);
+      setProfile(data ?? null);
     }
 
     loadProfile();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      loadProfile();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) { setProfile(null); return; }
+      const supabase2 = createClient();
+      supabase2
+        .from("profiles")
+        .select("name, username, is_admin")
+        .eq("id", session.user.id)
+        .single()
+        .then(({ data }) => setProfile(data ?? null));
     });
 
     return () => subscription.unsubscribe();
@@ -83,7 +91,7 @@ export default function Nav() {
         })}
       </div>
       <div className="ml-auto flex items-center gap-3">
-        {profile ? (
+        {profile === undefined ? null : profile ? (
           <>
             <span className="text-sm text-[#6B7685]">
               <span className="font-medium text-[#191F28]">{profile.name}</span>
