@@ -10,6 +10,7 @@
 
 | 기능 | 설명 |
 |------|------|
+| 회원 관리 | 아이디/비밀번호 가입, 관리자 이메일 승인 후 활성화 |
 | Daily Log | 업무별 진행 내용·이슈·인사이트 일일 기록 |
 | Weekly Report | 차주 예정 업무 등록 및 주간 현황 관리 |
 | 첨부 파일 | 업무에 링크 또는 이미지 첨부 (Supabase Storage) |
@@ -20,6 +21,16 @@
 
 ## UX 기능 상세
 
+### 회원 관리
+
+| 기능 | 동작 |
+|------|------|
+| 회원가입 | 이름·아이디·비밀번호·이메일 입력 → 관리자에게 승인 요청 메일 발송 |
+| 관리자 승인 | 이메일 수락 버튼 1클릭 또는 `/admin` 페이지에서 승인 |
+| 멤버 자동 등록 | 승인 시 Daily Log / Weekly / 대시보드에 해당 멤버 탭 자동 추가 |
+| 접근 제어 | 본인 탭에서만 업무 추가·수정·삭제 가능, 타인 탭은 열람만 |
+| 로그인 탭 자동 선택 | 로그인 후 항상 본인 탭이 먼저 선택됨 |
+
 ### Daily Log
 
 | 기능 | 동작 |
@@ -29,7 +40,6 @@
 | 상태 퀵 토글 | 상태 뱃지 클릭 → 진행중 → 완료 → 보류 순환 (수정 모달 없이 즉시 변경) |
 | 태스크 복제 | 복제 버튼으로 동일 업무를 현재 날짜에 새 카드로 즉시 생성 |
 | 카드 접기/펼치기 | 버튼으로 로그 필드 숨김·표시 (업무 많을 때 스크롤 절약) |
-| 멤버 선택 기억 | 마지막 선택 멤버를 localStorage에 저장, 재방문 시 자동 복원 |
 | 휴무일 입력 제한 | 주말·공휴일 선택 시 업무 추가 비활성화 + 안내 배너 표시 |
 
 ### Weekly Report
@@ -63,6 +73,9 @@
 /daily          Daily Log 입력·조회
 /weekly         Weekly Report + 차주 업무 등록
 /report/print   출력 전용 페이지 (미리보기 + 출력)
+/admin          멤버 관리 (관리자 전용)
+/login          로그인
+/signup         회원가입
 ```
 
 ---
@@ -74,6 +87,8 @@
 | Framework | Next.js 14+ (App Router, TypeScript) |
 | Styling | Tailwind CSS |
 | DB / Storage | Supabase (PostgreSQL + Storage) |
+| Auth | Supabase Auth (아이디/비밀번호, 관리자 승인 플로우) |
+| 이메일 | Naver SMTP (nodemailer) |
 | 인쇄 | `window.print()` + `@media print` CSS |
 | 배포 | Vercel |
 
@@ -87,7 +102,14 @@ npm install
 
 # 2. 환경변수 설정
 cp .env.local.example .env.local
-# NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY 입력
+# 아래 항목 입력:
+# NEXT_PUBLIC_SUPABASE_URL
+# NEXT_PUBLIC_SUPABASE_ANON_KEY
+# SUPABASE_SERVICE_ROLE_KEY
+# NAVER_USER        (발신 네이버 이메일)
+# NAVER_PASSWORD    (네이버 앱 비밀번호)
+# ADMIN_EMAIL       (승인 요청 수신 이메일)
+# NEXT_PUBLIC_APP_URL
 
 # 3. 개발 서버 실행
 npm run dev
