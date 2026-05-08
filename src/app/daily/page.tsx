@@ -46,37 +46,41 @@ function DailyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // ── 로그인 사용자 이름 ────────────────────────────────────────────────
+  // ── 로그인 사용자 이름 (null = 로딩 중) ──────────────────────────────
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
+      if (!user) { setLoggedInName(""); return; }
       const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      if (data?.name) setLoggedInName(data.name);
+      setLoggedInName(data?.name ?? "");
     });
   }, []);
 
-  // ── 멤버 목록 + 마지막 선택 멤버 localStorage 유지 ─────────────────────
+  // ── 멤버 목록 ────────────────────────────────────────────────────────
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [selectedMember, setSelectedMember] = useState<string>("");
   useEffect(() => {
     fetch("/api/members")
       .then(r => r.json())
       .then((data: { id: string; name: string }[]) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setMembers(data);
-        const saved = localStorage.getItem("designboard_member");
-        const match = data.find(m => m.name === saved);
-        setSelectedMember(match ? match.name : data[0].name);
+        if (Array.isArray(data) && data.length > 0) setMembers(data);
       });
   }, []);
+
+  // ── 초기 탭 선택: 로그인한 본인 탭 우선 ──────────────────────────────
+  const selectionInitialized = useRef(false);
+  useEffect(() => {
+    if (selectionInitialized.current || members.length === 0 || loggedInName === null) return;
+    const own = members.find(m => m.name === loggedInName);
+    setSelectedMember(own ? own.name : members[0].name);
+    selectionInitialized.current = true;
+  }, [members, loggedInName]);
 
   const selectedMemberId = members.find(m => m.name === selectedMember)?.id ?? "";
 
   function handleMemberChange(member: string) {
     setSelectedMember(member);
-    localStorage.setItem("designboard_member", member);
   }
 
   // ── 기본 상태 ──────────────────────────────────────────────────────────

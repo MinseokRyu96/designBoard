@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
@@ -61,9 +61,9 @@ export default function WeeklyPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
+      if (!user) { setLoggedInName(""); return; }
       const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      if (data?.name) setLoggedInName(data.name);
+      setLoggedInName(data?.name ?? "");
     });
   }, []);
 
@@ -71,13 +71,18 @@ export default function WeeklyPage() {
     fetch("/api/members")
       .then(r => r.json())
       .then((data: { id: string; name: string }[]) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        setMembers(data);
-        const saved = localStorage.getItem("designboard_member");
-        const match = data.find(m => m.name === saved);
-        setSelectedMember(match ? match.name : data[0].name);
+        if (Array.isArray(data) && data.length > 0) setMembers(data);
       });
   }, []);
+
+  // 초기 탭 선택: 로그인한 본인 탭 우선
+  const selectionInitialized = useRef(false);
+  useEffect(() => {
+    if (selectionInitialized.current || members.length === 0 || loggedInName === null) return;
+    const own = members.find(m => m.name === loggedInName);
+    setSelectedMember(own ? own.name : members[0].name);
+    selectionInitialized.current = true;
+  }, [members, loggedInName]);
   const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getSunday(new Date())));
   const [tab, setTab] = useState<"this" | "next">("this");
 
