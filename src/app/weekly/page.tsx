@@ -7,6 +7,7 @@ import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 const MEMBER_IDS: Record<MemberName, string> = {
@@ -59,6 +60,18 @@ const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function WeeklyPage() {
   const [selectedMember, setSelectedMember] = useState<MemberName>(MEMBER_ORDER[0]);
+  const [loggedInName, setLoggedInName] = useState<MemberName | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+      if (data && MEMBER_ORDER.includes(data.name as MemberName)) {
+        setLoggedInName(data.name as MemberName);
+      }
+    });
+  }, []);
   const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getSunday(new Date())));
   const [tab, setTab] = useState<"this" | "next">("this");
 
@@ -146,6 +159,8 @@ export default function WeeklyPage() {
     fetchData();
   }
 
+  const isOwner = loggedInName === selectedMember;
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
       {/* 헤더 */}
@@ -221,7 +236,7 @@ export default function WeeklyPage() {
                   }`}>
                     {dayLabel}{holiday && <span className="font-medium ml-1.5 opacity-75">· {holiday}</span>}
                   </span>
-                  {!isSun && !isSat && !holiday && (
+                  {isOwner && !isSun && !isSat && !holiday && (
                     <Link
                       href={`/daily?date=${dateStr}`}
                       className="text-xs text-[#3366FF] hover:underline font-medium"
@@ -325,13 +340,15 @@ export default function WeeklyPage() {
                     </p>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteNextTask(task.id)}
-                  disabled={deleting === task.id}
-                  className="text-xs text-[#C0C8D4] hover:text-[#FF4E6A] transition-colors"
-                >
-                  {deleting === task.id ? "..." : "삭제"}
-                </button>
+                {isOwner && (
+                  <button
+                    onClick={() => deleteNextTask(task.id)}
+                    disabled={deleting === task.id}
+                    className="text-xs text-[#C0C8D4] hover:text-[#FF4E6A] transition-colors"
+                  >
+                    {deleting === task.id ? "..." : "삭제"}
+                  </button>
+                )}
               </div>
             ))}
             {nextTasks.length === 0 && !showForm && (
@@ -339,7 +356,7 @@ export default function WeeklyPage() {
             )}
           </div>
 
-          {showForm ? (
+          {isOwner && showForm ? (
             <div className="mt-4 bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
               <div className="space-y-3">
                 <div>
@@ -394,14 +411,14 @@ export default function WeeklyPage() {
                 </button>
               </div>
             </div>
-          ) : (
+          ) : isOwner ? (
             <button
               onClick={() => setShowForm(true)}
               className="mt-4 w-full py-3.5 border-2 border-dashed border-[#E2E8F0] rounded-2xl text-sm text-[#A0AAB4] hover:border-[#3366FF] hover:text-[#3366FF] transition-colors"
             >
               <Icon name="plus" size={16} className="inline mr-1" /> 차주 업무 추가
             </button>
-          )}
+          ) : null}
         </div>
       )}
 
