@@ -9,6 +9,7 @@ import Icon from "@/components/ui/Icon";
 import Tooltip from "@/components/ui/Tooltip";
 import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
+import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 function isNonWorkday(dateStr: string): boolean {
@@ -49,6 +50,19 @@ const LOG_FIELDS = [
 function DailyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // ── 로그인 사용자 이름 ────────────────────────────────────────────────
+  const [loggedInName, setLoggedInName] = useState<MemberName | null>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
+      if (data && MEMBER_ORDER.includes(data.name as MemberName)) {
+        setLoggedInName(data.name as MemberName);
+      }
+    });
+  }, []);
 
   // ── #3: 마지막 선택 멤버 localStorage 유지 ──────────────────────────────
   const [selectedMember, setSelectedMember] = useState<MemberName>(MEMBER_ORDER[0]);
@@ -325,6 +339,9 @@ function DailyContent() {
     }
   }
 
+  // 현재 탭이 로그인한 사람의 탭인지 여부
+  const isOwner = loggedInName === selectedMember;
+
   // ───────────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
@@ -351,8 +368,8 @@ function DailyContent() {
         <MemberTabs selected={selectedMember} onChange={handleMemberChange} />
       </div>
 
-      {/* ── #1: 퀵 추가 카드 ── */}
-      {(() => {
+      {/* ── #1: 퀵 추가 카드 — 본인 탭에서만 표시 ── */}
+      {isOwner && (() => {
         const isOff = isNonWorkday(date);
         const offLabel = KOREAN_HOLIDAYS[date] ?? (new Date(date + "T00:00:00").getDay() === 0 ? "일요일" : "토요일");
         return (
@@ -450,6 +467,14 @@ function DailyContent() {
         );
       })()}
 
+      {/* 다른 멤버 탭 열람 중 안내 */}
+      {!isOwner && loggedInName && (
+        <div className="flex items-center gap-2 mb-4 px-4 py-2.5 bg-[#F4F6FA] border border-[#E2E8F0] rounded-xl text-xs text-[#6B7685]">
+          <Icon name="warning" size={14} />
+          {selectedMember}님의 업무는 열람만 가능합니다.
+        </div>
+      )}
+
       {/* ── 업무 카드 목록 ── */}
       {loading ? (
         <div className="text-center py-16 text-[#A0AAB4] text-sm">불러오는 중...</div>
@@ -522,30 +547,34 @@ function DailyContent() {
                         {task.purpose && <p className="text-sm text-[#6B7685] mt-1">{task.purpose}</p>}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-                        {/* #4: 클릭으로 상태 순환 */}
-                        <Tooltip text="클릭하여 상태 변경">
-                          <StatusBadge status={task.status} onClick={() => updateStatus(task.id, task.status)} />
+                        {/* #4: 클릭으로 상태 순환 — 본인만 */}
+                        <Tooltip text={isOwner ? "클릭하여 상태 변경" : task.status}>
+                          <StatusBadge status={task.status} onClick={isOwner ? () => updateStatus(task.id, task.status) : undefined} />
                         </Tooltip>
                         {task.due_date && <span className="text-xs text-[#A0AAB4]">~{task.due_date}</span>}
-                        <Tooltip text="수정">
-                          <button onClick={() => startEdit(task)}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all">
-                            <Icon name="pencil" size={14} />
-                          </button>
-                        </Tooltip>
-                        {/* #5: 태스크 복제 */}
-                        <Tooltip text="복제">
-                          <button onClick={() => duplicateTask(task)} disabled={creating}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all disabled:opacity-30">
-                            <Icon name="copy" size={14} />
-                          </button>
-                        </Tooltip>
-                        <Tooltip text="삭제">
-                          <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
-                            className="w-7 h-7 flex items-center justify-center rounded-lg opacity-40 hover:opacity-100 hover:bg-[#FFF5F7] transition-all">
-                            {deleting === task.id ? <span className="text-xs">…</span> : <Icon name="trash" size={14} />}
-                          </button>
-                        </Tooltip>
+                        {isOwner && (
+                          <>
+                            <Tooltip text="수정">
+                              <button onClick={() => startEdit(task)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all">
+                                <Icon name="pencil" size={14} />
+                              </button>
+                            </Tooltip>
+                            {/* #5: 태스크 복제 */}
+                            <Tooltip text="복제">
+                              <button onClick={() => duplicateTask(task)} disabled={creating}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] hover:border-[#3366FF] opacity-60 hover:opacity-100 transition-all disabled:opacity-30">
+                                <Icon name="copy" size={14} />
+                              </button>
+                            </Tooltip>
+                            <Tooltip text="삭제">
+                              <button onClick={() => deleteTask(task.id)} disabled={deleting === task.id}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg opacity-40 hover:opacity-100 hover:bg-[#FFF5F7] transition-all">
+                                {deleting === task.id ? <span className="text-xs">…</span> : <Icon name="trash" size={14} />}
+                              </button>
+                            </Tooltip>
+                          </>
+                        )}
                         {/* #6: 접기/펼치기 */}
                         <Tooltip text={collapsedTasks.has(task.id) ? "펼치기" : "접기"}>
                           <button onClick={() => toggleCollapse(task.id)}
@@ -568,45 +597,48 @@ function DailyContent() {
                           <textarea
                             rows={2}
                             value={task.log[field]}
-                            onChange={(e) => updateLog(task.id, field, e.target.value)}
-                            placeholder={placeholder}
+                            onChange={(e) => isOwner && updateLog(task.id, field, e.target.value)}
+                            readOnly={!isOwner}
+                            placeholder={isOwner ? placeholder : ""}
                             ref={(el) => {
                               if (field === "progress") {
                                 if (el) logRefs.current.set(task.id, el);
                                 else logRefs.current.delete(task.id);
                               }
                             }}
-                            className="w-full border border-[#EEF1F6] rounded-xl px-3 py-2.5 text-sm text-[#191F28] resize-none focus:outline-none focus:ring-2 focus:ring-[#3366FF] bg-[#F9FAFB] placeholder:text-[#C0C8D4] transition-colors"
+                            className={`w-full border border-[#EEF1F6] rounded-xl px-3 py-2.5 text-sm text-[#191F28] resize-none focus:outline-none bg-[#F9FAFB] placeholder:text-[#C0C8D4] transition-colors ${isOwner ? "focus:ring-2 focus:ring-[#3366FF]" : "cursor-default"}`}
                           />
                         </div>
                       ))}
 
-                      {/* ── #2: 저장 상태 표시 ── */}
-                      <div className="flex justify-end items-center gap-3 pt-1 min-h-[32px]">
-                        {status === "saving" && (
-                          <span className="text-xs text-[#A0AAB4] flex items-center gap-1.5">
-                            <span className="w-3 h-3 border-2 border-[#A0AAB4] border-t-transparent rounded-full animate-spin" />
-                            저장 중…
-                          </span>
-                        )}
-                        {status === "saved" && (
-                          <span className="flex items-center gap-1 text-xs text-[#0BB15A] font-semibold">
-                            <Icon name="check" size={14} /> 저장됨
-                          </span>
-                        )}
-                        {!status && task.logDirty && (
-                          <button
-                            onClick={() => saveLog(task)}
-                            className="px-5 py-2 bg-[#3366FF] text-white rounded-xl text-sm font-medium hover:bg-[#2255EE] transition-colors"
-                          >
-                            저장
-                          </button>
-                        )}
-                      </div>
+                      {/* ── #2: 저장 상태 표시 — 본인만 ── */}
+                      {isOwner && (
+                        <div className="flex justify-end items-center gap-3 pt-1 min-h-[32px]">
+                          {status === "saving" && (
+                            <span className="text-xs text-[#A0AAB4] flex items-center gap-1.5">
+                              <span className="w-3 h-3 border-2 border-[#A0AAB4] border-t-transparent rounded-full animate-spin" />
+                              저장 중…
+                            </span>
+                          )}
+                          {status === "saved" && (
+                            <span className="flex items-center gap-1 text-xs text-[#0BB15A] font-semibold">
+                              <Icon name="check" size={14} /> 저장됨
+                            </span>
+                          )}
+                          {!status && task.logDirty && (
+                            <button
+                              onClick={() => saveLog(task)}
+                              className="px-5 py-2 bg-[#3366FF] text-white rounded-xl text-sm font-medium hover:bg-[#2255EE] transition-colors"
+                            >
+                              저장
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="px-5 pb-5">
-                      <TaskAttachments taskId={task.id} />
+                      <TaskAttachments taskId={task.id} readOnly={!isOwner} />
                     </div>
                   </>
                 )}

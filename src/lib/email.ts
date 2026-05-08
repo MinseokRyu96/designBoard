@@ -33,7 +33,7 @@ export async function sendSignupRequestEmail({
         <p style="color:#6B7685;font-size:14px;margin-bottom:24px;">아래 정보를 확인하고 승인 여부를 결정해주세요.</p>
         <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;">
           <tr><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;width:80px;">이름</td><td style="padding:12px 16px;color:#191F28;font-size:14px;font-weight:600;">${applicantName}</td></tr>
-          <tr style="border-top:1px solid #e2e8f0;"><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;">아이디</td><td style="padding:12px 16px;color:#191F28;font-size:14px;">@${applicantUsername}</td></tr>
+          <tr style="border-top:1px solid #e2e8f0;"><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;">아이디</td><td style="padding:12px 16px;color:#191F28;font-size:14px;">${applicantUsername}</td></tr>
           <tr style="border-top:1px solid #e2e8f0;"><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;">이메일</td><td style="padding:12px 16px;color:#191F28;font-size:14px;">${applicantEmail}</td></tr>
         </table>
         <div style="margin-top:28px;text-align:center;">
