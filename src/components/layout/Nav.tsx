@@ -16,6 +16,7 @@ const navItems = [
 interface UserProfile {
   name: string;
   username: string;
+  is_admin: boolean;
 }
 
 export default function Nav() {
@@ -32,7 +33,7 @@ export default function Nav() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("name, username")
+        .select("name, username, is_admin")
         .eq("id", user.id)
         .single();
       if (data) setProfile(data);
@@ -88,6 +89,18 @@ export default function Nav() {
               <span className="font-medium text-[#191F28]">{profile.name}</span>
               <span className="ml-1 text-[#A0AAB4] text-xs">@{profile.username}</span>
             </span>
+            {profile.is_admin && (
+              <Link
+                href="/admin"
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname === "/admin"
+                    ? "bg-[#EEF3FF] text-[#3366FF]"
+                    : "text-[#6B7685] hover:bg-[#F4F6FA] hover:text-[#191F28]"
+                }`}
+              >
+                멤버 관리
+              </Link>
+            )}
             <button
               onClick={handleLogout}
               className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#6B7685] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors"

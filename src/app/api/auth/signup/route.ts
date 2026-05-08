@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendSignupRequestEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -11,18 +12,16 @@ export async function POST(request: NextRequest) {
 
   const serviceClient = createServiceClient();
 
-  // 아이디 중복 확인
-  const { data: existing } = await serviceClient
+  const { data: existingUsername } = await serviceClient
     .from("profiles")
     .select("id")
     .eq("username", username)
     .maybeSingle();
 
-  if (existing) {
+  if (existingUsername) {
     return NextResponse.json({ error: "이미 사용 중인 아이디입니다." }, { status: 409 });
   }
 
-  // 이메일 중복 확인
   const { data: existingEmail } = await serviceClient
     .from("profiles")
     .select("id")
@@ -33,11 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이미 가입된 이메일입니다." }, { status: 409 });
   }
 
-  // Supabase Auth 사용자 생성 (이메일 인증 없이 바로 활성화)
+  // 가입 즉시 로그인 차단 (관리자 승인 전까지)
   const { data: authData, error: authError } = await serviceClient.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    ban_duration: "876000h",
     user_metadata: { name, username },
   });
 
@@ -45,18 +45,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: authError.message }, { status: 500 });
   }
 
-  // 프로필 저장
   const { error: profileError } = await serviceClient.from("profiles").insert({
     id: authData.user.id,
     name,
     username,
     email,
+    status: "pending",
   });
 
   if (profileError) {
-    // 프로필 저장 실패 시 auth 사용자도 롤백
     await serviceClient.auth.admin.deleteUser(authData.user.id);
     return NextResponse.json({ error: profileError.message }, { status: 500 });
+  }
+
+  // 관리자 이메일로 가입 신청 알림 발송
+  const { data: admin } = await serviceClient
+    .from("profiles")
+    .select("email")
+    .eq("is_admin", true)
+    .maybeSingle();
+
+  if (admin?.email) {
+    const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const approveUrl = `${origin}/api/admin/approve?user_id=${authData.user.id}`;
+
+    try {
+      await sendSignupRequestEmail({
+        adminEmail: admin.email,
+        applicantName: name,
+        applicantUsername: username,
+        applicantEmail: email,
+        approveUrl,
+      });
+    } catch {
+      // 이메일 발송 실패해도 가입 신청은 유효
+    }
   }
 
   return NextResponse.json({ success: true }, { status: 201 });

@@ -48,7 +48,11 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json({ error: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
+    const isBanned = error.message.toLowerCase().includes("ban") || error.message.toLowerCase().includes("disabled");
+    const msg = isBanned
+      ? "아직 관리자 승인이 완료되지 않았습니다. 승인 후 로그인할 수 있습니다."
+      : "아이디 또는 비밀번호가 올바르지 않습니다.";
+    return NextResponse.json({ error: msg }, { status: 401 });
   }
 
   return response;
