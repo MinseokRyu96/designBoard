@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendSignupRequestEmail } from "@/lib/email";
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -45,12 +46,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: authError.message }, { status: 500 });
   }
 
+  const approvalToken = randomUUID();
+
   const { error: profileError } = await serviceClient.from("profiles").insert({
     id: authData.user.id,
     name,
     username,
     email,
     status: "pending",
+    approval_token: approvalToken,
   });
 
   if (profileError) {
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   if (adminEmail) {
     const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
-    const approveUrl = `${origin}/api/admin/approve?user_id=${authData.user.id}`;
+    const approveUrl = `${origin}/api/admin/approve?token=${approvalToken}`;
 
     try {
       await sendSignupRequestEmail({

@@ -36,12 +36,14 @@ export async function sendSignupRequestEmail({
           <tr style="border-top:1px solid #e2e8f0;"><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;">아이디</td><td style="padding:12px 16px;color:#191F28;font-size:14px;">@${applicantUsername}</td></tr>
           <tr style="border-top:1px solid #e2e8f0;"><td style="padding:12px 16px;color:#A0AAB4;font-size:13px;">이메일</td><td style="padding:12px 16px;color:#191F28;font-size:14px;">${applicantEmail}</td></tr>
         </table>
-        <a href="${approveUrl}" style="display:inline-block;margin-top:24px;padding:12px 28px;background:#3366FF;color:#fff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">
-          가입 승인하기
-        </a>
-        <p style="margin-top:16px;color:#A0AAB4;font-size:12px;">
-          승인하지 않으려면 이 메일을 무시하세요.<br/>
-          또는 <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin" style="color:#3366FF;">관리자 페이지</a>에서 관리할 수 있습니다.
+        <div style="margin-top:28px;text-align:center;">
+          <a href="${approveUrl}" style="display:inline-block;padding:14px 36px;background:#3366FF;color:#fff;text-decoration:none;border-radius:10px;font-size:15px;font-weight:700;letter-spacing:-0.3px;">
+            ✅ 수락하기
+          </a>
+        </div>
+        <p style="margin-top:20px;color:#A0AAB4;font-size:12px;text-align:center;">
+          버튼을 누르면 즉시 가입이 승인됩니다.<br/>
+          승인하지 않으려면 이 메일을 무시하세요.
         </p>
       </div>
     `,
