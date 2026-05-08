@@ -38,6 +38,20 @@ export default function Nav() {
           );
         })}
       </div>
+      <div className="ml-auto flex items-center gap-2">
+        <Link
+          href="/login"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium text-[#6B7685] hover:bg-[#F4F6FA] hover:text-[#191F28] transition-colors"
+        >
+          로그인
+        </Link>
+        <Link
+          href="/signup"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#3366FF] text-white hover:bg-[#2255EE] transition-colors"
+        >
+          회원가입
+        </Link>
+      </div>
     </nav>
   );
 }
