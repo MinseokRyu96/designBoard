@@ -1,10 +1,12 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.naver.com",
+  port: 465,
+  secure: true,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: process.env.NAVER_USER,
+    pass: process.env.NAVER_PASSWORD,
   },
 });
 
@@ -22,7 +24,7 @@ export async function sendSignupRequestEmail({
   approveUrl: string;
 }) {
   await transporter.sendMail({
-    from: `"DesignBoard" <${process.env.GMAIL_USER}>`,
+    from: `"DesignBoard" <${process.env.NAVER_USER}>`,
     to: adminEmail,
     subject: `[DesignBoard] 새 가입 신청 — ${applicantName}`,
     html: `

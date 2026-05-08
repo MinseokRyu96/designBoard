@@ -59,19 +59,15 @@ export async function POST(request: NextRequest) {
   }
 
   // 관리자 이메일로 가입 신청 알림 발송
-  const { data: admin } = await serviceClient
-    .from("profiles")
-    .select("email")
-    .eq("is_admin", true)
-    .maybeSingle();
+  const adminEmail = process.env.ADMIN_EMAIL ?? process.env.NAVER_USER ?? "";
 
-  if (admin?.email) {
+  if (adminEmail) {
     const origin = request.headers.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
     const approveUrl = `${origin}/api/admin/approve?user_id=${authData.user.id}`;
 
     try {
       await sendSignupRequestEmail({
-        adminEmail: admin.email,
+        adminEmail,
         applicantName: name,
         applicantUsername: username,
         applicantEmail: email,
