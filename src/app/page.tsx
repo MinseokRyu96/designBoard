@@ -87,6 +87,7 @@ export default function DashboardPage() {
   const [memberDots, setMemberDots] = useState<Map<string, string[]>>(new Map());
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
+  // members와 캘린더 데이터를 동시에 fetch — 서로 기다리지 않음
   useEffect(() => {
     fetch("/api/members")
       .then(r => r.json())
@@ -95,6 +96,24 @@ export default function DashboardPage() {
       });
   }, []);
 
+  const [rawLogs, setRawLogs] = useState<LogEntry[]>([]);
+  const [rawTasks, setRawTasks] = useState<TaskEntry[]>([]);
+
+  useEffect(() => {
+    const daysInMonth = getDaysInMonth(year, month);
+    const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+
+    Promise.all([
+      fetch(`/api/daily-logs?from=${from}&to=${to}`).then(r => r.json()),
+      fetch(`/api/tasks?from=${from}&to=${to}`).then(r => r.json()),
+    ]).then(([logs, tasks]) => {
+      if (Array.isArray(logs)) setRawLogs(logs);
+      if (Array.isArray(tasks)) setRawTasks(tasks);
+    });
+  }, [year, month]);
+
+  // members 또는 raw 데이터가 바뀌면 dot/chip 재계산
   useEffect(() => {
     if (members.length === 0) return;
     const memberByIdMap = new Map(members.map(({ id, name }) => [id, name]));
@@ -103,43 +122,29 @@ export default function DashboardPage() {
     const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
 
-    // member dots: daily_logs 기반
-    const logsPromise = fetch(`/api/daily-logs?from=${from}&to=${to}`)
-      .then(r => r.json())
-      .then((data: LogEntry[]) => {
-        if (!Array.isArray(data)) return;
-        const dotMap = new Map<string, string[]>();
-        for (const entry of data) {
-          const memberName = memberByIdMap.get(entry.member_id);
-          if (!memberName) continue;
-          if (!dotMap.has(entry.log_date)) dotMap.set(entry.log_date, []);
-          if (!dotMap.get(entry.log_date)!.includes(memberName)) {
-            dotMap.get(entry.log_date)!.push(memberName);
-          }
-        }
-        setMemberDots(dotMap);
-      });
+    const dotMap = new Map<string, string[]>();
+    for (const entry of rawLogs) {
+      const memberName = memberByIdMap.get(entry.member_id);
+      if (!memberName) continue;
+      if (!dotMap.has(entry.log_date)) dotMap.set(entry.log_date, []);
+      if (!dotMap.get(entry.log_date)!.includes(memberName)) {
+        dotMap.get(entry.log_date)!.push(memberName);
+      }
+    }
+    setMemberDots(dotMap);
 
-    // chips: tasks의 start_date ~ due_date 전체 구간 기반
-    const tasksPromise = fetch(`/api/tasks?from=${from}&to=${to}`)
-      .then(r => r.json())
-      .then((data: TaskEntry[]) => {
-        if (!Array.isArray(data)) return;
-        const streakList: TaskStreak[] = [];
-        for (const task of data) {
-          const memberName = memberByIdMap.get(task.member_id);
-          if (!memberName || !task.start_date) continue;
-          const end = task.due_date ?? task.start_date;
-          const dates = dateRange(task.start_date, end, from, to);
-          if (dates.length > 0) {
-            streakList.push({ taskId: task.id, title: task.title, memberName, dates });
-          }
-        }
-        setStreaks(streakList);
-      });
-
-    Promise.all([logsPromise, tasksPromise]);
-  }, [year, month, members]);
+    const streakList: TaskStreak[] = [];
+    for (const task of rawTasks) {
+      const memberName = memberByIdMap.get(task.member_id);
+      if (!memberName || !task.start_date) continue;
+      const end = task.due_date ?? task.start_date;
+      const dates = dateRange(task.start_date, end, from, to);
+      if (dates.length > 0) {
+        streakList.push({ taskId: task.id, title: task.title, memberName, dates });
+      }
+    }
+    setStreaks(streakList);
+  }, [members, rawLogs, rawTasks, year, month]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDow = getFirstDow(year, month);

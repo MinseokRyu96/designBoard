@@ -9,7 +9,6 @@ import Icon from "@/components/ui/Icon";
 import Tooltip from "@/components/ui/Tooltip";
 import { type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 function isNonWorkday(dateStr: string): boolean {
@@ -46,36 +45,21 @@ function DailyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // ── 로그인 사용자 이름 (null = 로딩 중) ──────────────────────────────
+  // ── 멤버 목록 + 로그인 사용자 (단일 요청으로 워터폴 제거) ──────────────
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { setLoggedInName(""); return; }
-      const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      setLoggedInName(data?.name ?? "");
-    });
-  }, []);
-
-  // ── 멤버 목록 ────────────────────────────────────────────────────────
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [selectedMember, setSelectedMember] = useState<string>("");
   useEffect(() => {
-    fetch("/api/members")
+    fetch("/api/me")
       .then(r => r.json())
-      .then((data: { id: string; name: string }[]) => {
-        if (Array.isArray(data) && data.length > 0) setMembers(data);
+      .then((data: { name: string; members: { id: string; name: string }[] }) => {
+        if (!data.members) return;
+        setMembers(data.members);
+        setLoggedInName(data.name ?? "");
+        const own = data.members.find(m => m.name === data.name);
+        setSelectedMember(own ? own.name : data.members[0]?.name ?? "");
       });
   }, []);
-
-  // ── 초기 탭 선택: 로그인한 본인 탭 우선 ──────────────────────────────
-  const selectionInitialized = useRef(false);
-  useEffect(() => {
-    if (selectionInitialized.current || members.length === 0 || loggedInName === null) return;
-    const own = members.find(m => m.name === loggedInName);
-    setSelectedMember(own ? own.name : members[0].name);
-    selectionInitialized.current = true;
-  }, [members, loggedInName]);
 
   const selectedMemberId = members.find(m => m.name === selectedMember)?.id ?? "";
 

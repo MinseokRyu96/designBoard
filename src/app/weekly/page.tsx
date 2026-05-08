@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
 import { type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 
@@ -59,30 +58,16 @@ export default function WeeklyPage() {
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { setLoggedInName(""); return; }
-      const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      setLoggedInName(data?.name ?? "");
-    });
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/members")
+    fetch("/api/me")
       .then(r => r.json())
-      .then((data: { id: string; name: string }[]) => {
-        if (Array.isArray(data) && data.length > 0) setMembers(data);
+      .then((data: { name: string; members: { id: string; name: string }[] }) => {
+        if (!data.members) return;
+        setMembers(data.members);
+        setLoggedInName(data.name ?? "");
+        const own = data.members.find(m => m.name === data.name);
+        setSelectedMember(own ? own.name : data.members[0]?.name ?? "");
       });
   }, []);
-
-  // 초기 탭 선택: 로그인한 본인 탭 우선
-  const selectionInitialized = useRef(false);
-  useEffect(() => {
-    if (selectionInitialized.current || members.length === 0 || loggedInName === null) return;
-    const own = members.find(m => m.name === loggedInName);
-    setSelectedMember(own ? own.name : members[0].name);
-    selectionInitialized.current = true;
-  }, [members, loggedInName]);
   const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getSunday(new Date())));
   const [tab, setTab] = useState<"this" | "next">("this");
 
