@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -89,6 +90,26 @@ export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id는 필수입니다." }, { status: 400 });
+
+  const serviceClient = createServiceClient();
+
+  // 이미지 첨부파일 Storage에서 먼저 삭제
+  const { data: attachments } = await serviceClient
+    .from("task_attachments")
+    .select("type, url")
+    .eq("task_id", id);
+
+  if (attachments && attachments.length > 0) {
+    const storagePaths = attachments
+      .filter(a => a.type === "image")
+      .flatMap(a => {
+        const match = new URL(a.url).pathname.match(/\/storage\/v1\/object\/public\/attachments\/(.+)/);
+        return match ? [match[1]] : [];
+      });
+    if (storagePaths.length > 0) {
+      await serviceClient.storage.from("attachments").remove(storagePaths);
+    }
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("tasks").delete().eq("id", id);
