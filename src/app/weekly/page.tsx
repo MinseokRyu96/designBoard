@@ -5,16 +5,11 @@ import MemberTabs from "@/components/ui/MemberTabs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
-import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
+import { type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
-const MEMBER_IDS: Record<MemberName, string> = {
-  류민석: "11111111-1111-1111-1111-111111111111",
-  계은영: "22222222-2222-2222-2222-222222222222",
-  한다영: "33333333-3333-3333-3333-333333333333",
-};
 
 interface DailyLogEntry {
   id: string;
@@ -59,18 +54,29 @@ function formatWeekLabel(weekStart: string): string {
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
 export default function WeeklyPage() {
-  const [selectedMember, setSelectedMember] = useState<MemberName>(MEMBER_ORDER[0]);
-  const [loggedInName, setLoggedInName] = useState<MemberName | null>(null);
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedMember, setSelectedMember] = useState<string>("");
+  const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      if (data && MEMBER_ORDER.includes(data.name as MemberName)) {
-        setLoggedInName(data.name as MemberName);
-      }
+      if (data?.name) setLoggedInName(data.name);
     });
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/members")
+      .then(r => r.json())
+      .then((data: { id: string; name: string }[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setMembers(data);
+        const saved = localStorage.getItem("designboard_member");
+        const match = data.find(m => m.name === saved);
+        setSelectedMember(match ? match.name : data[0].name);
+      });
   }, []);
   const [weekMonday, setWeekMonday] = useState<string>(() => toDateStr(getSunday(new Date())));
   const [tab, setTab] = useState<"this" | "next">("this");
@@ -84,14 +90,17 @@ export default function WeeklyPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<DailyLogEntry | null>(null);
 
+  const selectedMemberId = members.find(m => m.name === selectedMember)?.id ?? "";
+
   const weekSunday = toDateStr(new Date(new Date(weekMonday + "T00:00:00").setDate(new Date(weekMonday + "T00:00:00").getDate() + 6)));
   const nextMonday = toDateStr(new Date(new Date(weekMonday + "T00:00:00").setDate(new Date(weekMonday + "T00:00:00").getDate() + 7)));
 
   const fetchData = useCallback(async () => {
+    if (!selectedMemberId) return;
     setLoading(true);
     try {
       const [logsRes, nextRes] = await Promise.all([
-        fetch(`/api/daily-logs?member_id=${MEMBER_IDS[selectedMember]}&from=${weekMonday}&to=${weekSunday}`),
+        fetch(`/api/daily-logs?member_id=${selectedMemberId}&from=${weekMonday}&to=${weekSunday}`),
         fetch(`/api/next-week-tasks?week=${nextMonday}`),
       ]);
 
@@ -101,13 +110,13 @@ export default function WeeklyPage() {
       setDailyLogs(Array.isArray(logs) ? logs : []);
       setNextTasks(
         Array.isArray(nextAll)
-          ? nextAll.filter((t: NextTask & { member_id: string }) => t.member_id === MEMBER_IDS[selectedMember])
+          ? nextAll.filter((t: NextTask & { member_id: string }) => t.member_id === selectedMemberId)
           : []
       );
     } finally {
       setLoading(false);
     }
-  }, [selectedMember, weekMonday, weekSunday, nextMonday]);
+  }, [selectedMemberId, weekMonday, weekSunday, nextMonday]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -140,7 +149,7 @@ export default function WeeklyPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        member_id: MEMBER_IDS[selectedMember],
+        member_id: selectedMemberId,
         title: newTask.title,
         start_date: newTask.start_date || null,
         due_date: newTask.due_date || null,
@@ -195,7 +204,7 @@ export default function WeeklyPage() {
       </div>
 
       <div className="mb-6">
-        <MemberTabs selected={selectedMember} onChange={setSelectedMember} />
+        <MemberTabs members={members.map(m => m.name)} selected={selectedMember} onChange={setSelectedMember} />
       </div>
 
       {/* 탭 */}

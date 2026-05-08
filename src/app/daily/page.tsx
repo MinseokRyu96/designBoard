@@ -7,7 +7,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import TaskAttachments from "@/components/ui/TaskAttachments";
 import Icon from "@/components/ui/Icon";
 import Tooltip from "@/components/ui/Tooltip";
-import { MEMBER_ORDER, type MemberName, type TaskStatus } from "@/types";
+import { type TaskStatus } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -17,11 +17,6 @@ function isNonWorkday(dateStr: string): boolean {
   return day === 0 || day === 6 || !!KOREAN_HOLIDAYS[dateStr];
 }
 
-const MEMBER_IDS: Record<MemberName, string> = {
-  류민석: "11111111-1111-1111-1111-111111111111",
-  계은영: "22222222-2222-2222-2222-222222222222",
-  한다영: "33333333-3333-3333-3333-333333333333",
-};
 
 interface TaskWithLog {
   id: string;
@@ -52,28 +47,34 @@ function DailyContent() {
   const router = useRouter();
 
   // ── 로그인 사용자 이름 ────────────────────────────────────────────────
-  const [loggedInName, setLoggedInName] = useState<MemberName | null>(null);
+  const [loggedInName, setLoggedInName] = useState<string | null>(null);
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const { data } = await supabase.from("profiles").select("name").eq("id", user.id).single();
-      if (data && MEMBER_ORDER.includes(data.name as MemberName)) {
-        setLoggedInName(data.name as MemberName);
-      }
+      if (data?.name) setLoggedInName(data.name);
     });
   }, []);
 
-  // ── #3: 마지막 선택 멤버 localStorage 유지 ──────────────────────────────
-  const [selectedMember, setSelectedMember] = useState<MemberName>(MEMBER_ORDER[0]);
+  // ── 멤버 목록 + 마지막 선택 멤버 localStorage 유지 ─────────────────────
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedMember, setSelectedMember] = useState<string>("");
   useEffect(() => {
-    const saved = localStorage.getItem("designboard_member");
-    if (saved && MEMBER_ORDER.includes(saved as MemberName)) {
-      setSelectedMember(saved as MemberName);
-    }
+    fetch("/api/members")
+      .then(r => r.json())
+      .then((data: { id: string; name: string }[]) => {
+        if (!Array.isArray(data) || data.length === 0) return;
+        setMembers(data);
+        const saved = localStorage.getItem("designboard_member");
+        const match = data.find(m => m.name === saved);
+        setSelectedMember(match ? match.name : data[0].name);
+      });
   }, []);
 
-  function handleMemberChange(member: MemberName) {
+  const selectedMemberId = members.find(m => m.name === selectedMember)?.id ?? "";
+
+  function handleMemberChange(member: string) {
     setSelectedMember(member);
     localStorage.setItem("designboard_member", member);
   }
@@ -137,7 +138,7 @@ function DailyContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           task_id: task.id,
-          member_id: MEMBER_IDS[selectedMember],
+          member_id: selectedMemberId,
           log_date: date,
           ...task.log,
         }),
@@ -157,11 +158,12 @@ function DailyContent() {
 
   // ── 데이터 로드 ─────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    if (!selectedMemberId) return;
     setLoading(true);
     try {
       const [logsRes, tasksRes] = await Promise.all([
-        fetch(`/api/daily-logs?member_id=${MEMBER_IDS[selectedMember]}&date=${date}`),
-        fetch(`/api/tasks?member_id=${MEMBER_IDS[selectedMember]}&date=${date}`),
+        fetch(`/api/daily-logs?member_id=${selectedMemberId}&date=${date}`),
+        fetch(`/api/tasks?member_id=${selectedMemberId}&date=${date}`),
       ]);
       const logs = await logsRes.json();
       const allTasks = await tasksRes.json();
@@ -191,7 +193,7 @@ function DailyContent() {
     } finally {
       setLoading(false);
     }
-  }, [selectedMember, date]);
+  }, [selectedMemberId, date]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -221,7 +223,7 @@ function DailyContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          member_id: MEMBER_IDS[selectedMember],
+          member_id: selectedMemberId,
           title: task.title,
           project_name: task.project?.name || undefined,
           purpose: task.purpose || undefined,
@@ -235,7 +237,7 @@ function DailyContent() {
         await fetch("/api/daily-logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task_id: newTask.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
+          body: JSON.stringify({ task_id: newTask.id, member_id: selectedMemberId, log_date: date }),
         });
         setFocusNewTaskId(newTask.id);
       }
@@ -314,7 +316,7 @@ function DailyContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          member_id: MEMBER_IDS[selectedMember],
+          member_id: selectedMemberId,
           title,
           project_name: project_name || undefined,
           purpose: purpose || undefined,
@@ -328,7 +330,7 @@ function DailyContent() {
         await fetch("/api/daily-logs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task_id: task.id, member_id: MEMBER_IDS[selectedMember], log_date: date }),
+          body: JSON.stringify({ task_id: task.id, member_id: selectedMemberId, log_date: date }),
         });
         // 새 업무는 닫힌 채로 추가
         setCollapsedTasks(prev => new Set([...prev, task.id]));
@@ -365,7 +367,7 @@ function DailyContent() {
       </div>
 
       <div className="mb-6">
-        <MemberTabs selected={selectedMember} onChange={handleMemberChange} />
+        <MemberTabs members={members.map(m => m.name)} selected={selectedMember} onChange={handleMemberChange} />
       </div>
 
       {/* ── #1: 퀵 추가 카드 — 본인 탭에서만 표시 ── */}

@@ -1,23 +1,19 @@
 "use client";
 
-import { MEMBER_ORDER, type MemberName } from "@/types";
-
-const MEMBER_COLORS: Record<MemberName, string> = {
-  류민석: "bg-[#3366FF]",
-  계은영: "bg-[#FF4E6A]",
-  한다영: "bg-[#F5A623]",
-};
+import { MEMBER_COLOR_PALETTE } from "@/lib/member-colors";
 
 interface MemberTabsProps {
-  selected: MemberName;
-  onChange: (member: MemberName) => void;
+  members: string[];
+  selected: string;
+  onChange: (member: string) => void;
 }
 
-export default function MemberTabs({ selected, onChange }: MemberTabsProps) {
+export default function MemberTabs({ members, selected, onChange }: MemberTabsProps) {
   return (
-    <div className="flex gap-2">
-      {MEMBER_ORDER.map((name) => {
+    <div className="flex gap-2 flex-wrap">
+      {members.map((name, idx) => {
         const active = selected === name;
+        const dotColor = MEMBER_COLOR_PALETTE[idx % MEMBER_COLOR_PALETTE.length].dot;
         return (
           <button
             key={name}
@@ -28,7 +24,7 @@ export default function MemberTabs({ selected, onChange }: MemberTabsProps) {
                 : "bg-white border border-[#E2E8F0] text-[#6B7685] hover:border-[#C0C8D4] hover:text-[#191F28]"
             }`}
           >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${MEMBER_COLORS[name]}`} />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
             {name}
           </button>
         );

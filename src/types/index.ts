@@ -1,6 +1,6 @@
-export type MemberName = "류민석" | "계은영" | "한다영";
+export type MemberName = string;
 
-export const MEMBER_ORDER: MemberName[] = ["류민석", "계은영", "한다영"];
+export const MEMBER_ORDER: string[] = ["류민석", "계은영", "한다영"];
 
 export type TaskStatus = "진행중" | "완료" | "보류";
 

@@ -2,20 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { MEMBER_ORDER, type MemberName } from "@/types";
 import { KOREAN_HOLIDAYS } from "@/lib/holidays";
-
-const MEMBER_COLORS: Record<MemberName, { dot: string; chip: string; text: string }> = {
-  류민석: { dot: "bg-[#3366FF]", chip: "bg-[#EEF3FF]", text: "text-[#3366FF]" },
-  계은영: { dot: "bg-[#FF4E6A]", chip: "bg-[#FFF0F2]", text: "text-[#FF4E6A]" },
-  한다영: { dot: "bg-[#F5A623]", chip: "bg-[#FFF8EC]", text: "text-[#C87D00]" },
-};
-
-const MEMBER_IDS: Record<MemberName, string> = {
-  류민석: "11111111-1111-1111-1111-111111111111",
-  계은영: "22222222-2222-2222-2222-222222222222",
-  한다영: "33333333-3333-3333-3333-333333333333",
-};
+import { getMemberColor } from "@/lib/member-colors";
 
 interface LogEntry {
   log_date: string;
@@ -33,12 +21,8 @@ interface TaskEntry {
 interface TaskStreak {
   taskId: string;
   title: string;
-  memberName: MemberName;
+  memberName: string;
   dates: string[]; // start_date ~ due_date 전체 구간
-}
-
-function getMemberName(id: string): MemberName | null {
-  return (Object.entries(MEMBER_IDS).find(([, v]) => v === id)?.[0] as MemberName) ?? null;
 }
 
 function dateRange(start: string, end: string, clampFrom: string, clampTo: string): string[] {
@@ -98,11 +82,23 @@ export default function DashboardPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
   const [streaks, setStreaks] = useState<TaskStreak[]>([]);
-  const [memberDots, setMemberDots] = useState<Map<string, MemberName[]>>(new Map());
+  const [memberDots, setMemberDots] = useState<Map<string, string[]>>(new Map());
   const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    fetch("/api/members")
+      .then(r => r.json())
+      .then((data: { id: string; name: string }[]) => {
+        if (Array.isArray(data)) setMembers(data);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (members.length === 0) return;
+    const memberByIdMap = new Map(members.map(({ id, name }) => [id, name]));
+
     const daysInMonth = getDaysInMonth(year, month);
     const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
     const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
@@ -112,9 +108,9 @@ export default function DashboardPage() {
       .then(r => r.json())
       .then((data: LogEntry[]) => {
         if (!Array.isArray(data)) return;
-        const dotMap = new Map<string, MemberName[]>();
+        const dotMap = new Map<string, string[]>();
         for (const entry of data) {
-          const memberName = getMemberName(entry.member_id);
+          const memberName = memberByIdMap.get(entry.member_id);
           if (!memberName) continue;
           if (!dotMap.has(entry.log_date)) dotMap.set(entry.log_date, []);
           if (!dotMap.get(entry.log_date)!.includes(memberName)) {
@@ -131,7 +127,7 @@ export default function DashboardPage() {
         if (!Array.isArray(data)) return;
         const streakList: TaskStreak[] = [];
         for (const task of data) {
-          const memberName = getMemberName(task.member_id);
+          const memberName = memberByIdMap.get(task.member_id);
           if (!memberName || !task.start_date) continue;
           const end = task.due_date ?? task.start_date;
           const dates = dateRange(task.start_date, end, from, to);
@@ -143,7 +139,7 @@ export default function DashboardPage() {
       });
 
     Promise.all([logsPromise, tasksPromise]);
-  }, [year, month]);
+  }, [year, month, members]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDow = getFirstDow(year, month);
@@ -190,8 +186,9 @@ export default function DashboardPage() {
     // 시작 열 순으로 정렬 후 슬롯 배정 (그리디: 가장 낮은 빈 슬롯)
     const weekTasks = Array.from(weekTaskMap.values())
       .sort((a, b) => {
-        const mi = MEMBER_ORDER.indexOf(a.streak.memberName) - MEMBER_ORDER.indexOf(b.streak.memberName);
-        if (mi !== 0) return mi;
+        const ai = members.findIndex(m => m.name === a.streak.memberName);
+        const bi = members.findIndex(m => m.name === b.streak.memberName);
+        if (ai !== bi) return ai - bi;
         return a.startCol - b.startCol || a.streak.taskId.localeCompare(b.streak.taskId);
       });
 
@@ -240,6 +237,10 @@ export default function DashboardPage() {
     else setMonth(m => m + 1);
   }
 
+  const memberColorByName = new Map(
+    members.map(({ name }, idx) => [name, getMemberColor(idx)])
+  );
+
   const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
 
   return (
@@ -259,10 +260,10 @@ export default function DashboardPage() {
       </div>
 
       {/* 멤버 범례 */}
-      <div className="flex gap-5 mb-6">
-        {MEMBER_ORDER.map((name) => (
+      <div className="flex gap-5 mb-6 flex-wrap">
+        {members.map(({ name }) => (
           <div key={name} className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${MEMBER_COLORS[name].dot}`} />
+            <span className={`w-2 h-2 rounded-full ${memberColorByName.get(name)?.dot ?? "bg-[#A0AAB4]"}`} />
             <span className="text-xs font-medium text-[#6B7685]">{name}</span>
           </div>
         ))}
@@ -350,8 +351,8 @@ export default function DashboardPage() {
 
                   {dots.length > 0 && !hasAnyChip && (
                     <div className="flex gap-0.5 justify-center">
-                      {MEMBER_ORDER.filter(n => dots.includes(n)).map(name => (
-                        <span key={name} className={`w-1.5 h-1.5 rounded-full ${MEMBER_COLORS[name].dot}`} />
+                      {members.filter(m => dots.includes(m.name)).map(({ name }) => (
+                        <span key={name} className={`w-1.5 h-1.5 rounded-full ${memberColorByName.get(name)?.dot ?? "bg-[#A0AAB4]"}`} />
                       ))}
                     </div>
                   )}
@@ -366,7 +367,7 @@ export default function DashboardPage() {
                         return <div key={`empty-${slotIdx}`} className="h-4" />;
                       }
                       const pos = getChipPos(streak.dates, dateStr, col);
-                      const colors = MEMBER_COLORS[streak.memberName];
+                      const colors = memberColorByName.get(streak.memberName) ?? { chip: "bg-[#F4F6FA]", text: "text-[#6B7685]" };
                       return (
                         <div
                           key={streak.taskId}

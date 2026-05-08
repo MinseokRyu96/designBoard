@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { MEMBER_ORDER, type ReportResponse, type MemberName } from "@/types";
+import { type ReportResponse } from "@/types";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -17,10 +17,11 @@ export async function GET(request: NextRequest) {
 
   const supabase = await createClient();
 
-  // 멤버 조회
+  // 멤버 조회 (created_at 순 = 원래 멤버 먼저)
   const { data: members, error: membersError } = await supabase
     .from("members")
-    .select("id, name");
+    .select("id, name")
+    .order("created_at");
 
   if (membersError) {
     return NextResponse.json({ error: membersError.message }, { status: 500 });
@@ -84,13 +85,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: nextWeekError.message }, { status: 500 });
   }
 
-  // MEMBER_ORDER 기준으로 정렬된 멤버 맵
-  const memberMap = new Map(members.map((m) => [m.id, m.name as MemberName]));
-
   // 멤버별 프로젝트별 태스크 그룹핑
-  const reportMembers = MEMBER_ORDER.map((memberName) => {
-    const member = members.find((m) => m.name === memberName);
-    if (!member) return null;
+  const reportMembers = members.map((member) => {
+    const memberName = member.name;
 
     const memberLogs = (logs ?? []).filter((l) => l.member_id === member.id);
 
@@ -151,13 +148,10 @@ export async function GET(request: NextRequest) {
       name: memberName,
       projects: Array.from(projectMap.values()),
     };
-  }).filter(Boolean);
+  });
 
-  // 차주 업무 그룹핑 (MEMBER_ORDER 기준)
-  const nextWeekTasks = MEMBER_ORDER.map((memberName) => {
-    const member = members.find((m) => m.name === memberName);
-    if (!member) return null;
-
+  // 차주 업무 그룹핑 (members 테이블 순서 기준)
+  const nextWeekTasks = members.map((member) => {
     const tasks = (nextWeekTasksRaw ?? [])
       .filter((t) => t.member_id === member.id)
       .map((t) => ({
@@ -166,8 +160,8 @@ export async function GET(request: NextRequest) {
         due_date: t.due_date,
       }));
 
-    return { member_name: memberName, tasks };
-  }).filter(Boolean);
+    return { member_name: member.name, tasks };
+  });
 
   const response: ReportResponse = {
     type,

@@ -90,6 +90,25 @@ async function approveUser(userId: string) {
     .from("profiles")
     .update({ status: "approved", approval_token: null })
     .eq("id", userId);
+
+  // 멤버 탭에 아직 없으면 추가
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("name")
+    .eq("id", userId)
+    .single();
+
+  if (profile?.name) {
+    const { data: existing } = await admin
+      .from("members")
+      .select("id")
+      .eq("name", profile.name)
+      .maybeSingle();
+
+    if (!existing) {
+      await admin.from("members").insert({ name: profile.name });
+    }
+  }
 }
 
 function renderResult(message: string, success: boolean) {
